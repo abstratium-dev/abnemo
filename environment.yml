@@ -1,0 +1,27 @@
+name: abnemo
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Python version
+  - python>=3.7
+  
+  # Pip packages
+  - pip
+  - pip:
+    - scapy>=2.5.0
+    - dnspython>=2.4.0
+    - tabulate>=0.9.0
+
+# NOTE: BCC (BPF Compiler Collection) for eBPF support must be installed separately
+# via system package manager because it's not available in conda:
+#
+#   Ubuntu/Debian:  sudo apt install python3-bpfcc
+#   Fedora/RHEL:    sudo dnf install python3-bcc
+#
+# BCC requires kernel headers and system-level integration that conda cannot provide.
+# After installing BCC system package, you must DEACTIVATE conda before using eBPF:
+#
+#   conda deactivate
+#   ./build_ebpf.sh
+#   sudo python3 abnemo.py monitor --ebpf

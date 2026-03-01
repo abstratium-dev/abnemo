@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abnemo - Network Traffic Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .controls {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .time-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 15px;
+            align-items: end;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 0.9em;
+        }
+        
+        input[type="datetime-local"] {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="datetime-local"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .quick-ranges {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .quick-btn {
+            background: #f0f0f0;
+            color: #333;
+            padding: 8px 16px;
+            font-size: 0.9em;
+        }
+        
+        .quick-btn:hover {
+            background: #e0e0e0;
+        }
+        
+        .stats {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .traffic-table {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .ip-type {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .ip-type.public {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .ip-type.private {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+        
+        .ip-type.multicast {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 1.1em;
+        }
+        
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 25px;
+        }
+        
+        th.sortable:hover {
+            background: #e8e9ea;
+        }
+        
+        th.sortable::after {
+            content: '⇅';
+            position: absolute;
+            right: 8px;
+            opacity: 0.3;
+        }
+        
+        th.sortable.asc::after {
+            content: '↑';
+            opacity: 1;
+        }
+        
+        th.sortable.desc::after {
+            content: '↓';
+            opacity: 1;
+        }
+        
+        .process-link {
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        
+        .process-link:hover {
+            color: #764ba2;
+        }
+        
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+            background: none;
+            border: none;
+            padding: 5px 10px;
+        }
+        
+        .modal-close:hover {
+            color: #333;
+        }
+        
+        .modal-content pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        @media (max-width: 768px) {
+            .time-controls {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌐 Abnemo</h1>
+            <p class="subtitle">Network Traffic Monitor & Analyzer</p>
+        </header>
+        
+        <div class="controls">
+            <div class="time-controls">
+                <div class="input-group">
+                    <label for="begin-time">Begin Time (Inclusive)</label>
+                    <input type="datetime-local" id="begin-time" step="1">
+                </div>
+                <div class="input-group">
+                    <label for="end-time">End Time (Exclusive)</label>
+                    <input type="datetime-local" id="end-time" step="1">
+                </div>
+                <button onclick="loadData()">Load Data</button>
+            </div>
+            
+            <div class="quick-ranges">
+                <button class="quick-btn" onclick="setRange(5)">Last 5 min</button>
+                <button class="quick-btn" onclick="setRange(15)">Last 15 min</button>
+                <button class="quick-btn" onclick="setRange(30)">Last 30 min</button>
+                <button class="quick-btn" onclick="setRange(60)">Last 1 hour</button>
+                <button class="quick-btn" onclick="setRange(360)">Last 6 hours</button>
+                <button class="quick-btn" onclick="setRange(1440)">Last 24 hours</button>
+            </div>
+        </div>
+        
+        <div id="error-container"></div>
+        
+        <div class="stats" id="stats-container" style="display: none;">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-ips">0</div>
+                    <div class="stat-label">Unique IPs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-bytes">0</div>
+                    <div class="stat-label">Total Bytes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-packets">0</div>
+                    <div class="stat-label">Total Packets</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="traffic-table">
+            <h2 style="margin-bottom: 20px; color: #333;">Traffic Details</h2>
+            <div id="table-container">
+                <div class="loading">Loading data...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Process Details Modal -->
+    <div id="process-modal" class="modal-overlay" onclick="if(event.target === this) closeModal()">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <div id="process-details"></div>
+        </div>
+    </div>
+    
+    <script>
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function formatNumber(num) {
+            return num.toLocaleString();
+        }
+        
+        function setRange(minutes) {
+            const end = new Date();
+            const begin = new Date(end.getTime() - minutes * 60000);
+            
+            document.getElementById('begin-time').value = formatDateTimeLocal(begin);
+            document.getElementById('end-time').value = formatDateTimeLocal(end);
+            
+            loadData();
+        }
+        
+        function formatDateTimeLocal(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+        }
+        
+        function updateURL(begin, end) {
+            const url = new URL(window.location);
+            url.searchParams.set('begin', begin);
+            url.searchParams.set('end', end);
+            window.history.pushState({}, '', url);
+        }
+        
+        function showError(message) {
+            const errorContainer = document.getElementById('error-container');
+            errorContainer.innerHTML = `<div class="error">${message}</div>`;
+        }
+        
+        function clearError() {
+            document.getElementById('error-container').innerHTML = '';
+        }
+        
+        async function loadData() {
+            const beginInput = document.getElementById('begin-time').value;
+            const endInput = document.getElementById('end-time').value;
+            
+            if (!beginInput || !endInput) {
+                showError('Please select both begin and end times');
+                return;
+            }
+            
+            const begin = new Date(beginInput).toISOString();
+            const end = new Date(endInput).toISOString();
+            
+            clearError();
+            document.getElementById('table-container').innerHTML = '<div class="loading">Loading data...</div>';
+            
+            try {
+                const response = await fetch(`/api/traffic?begin=${encodeURIComponent(begin)}&end=${encodeURIComponent(end)}`);
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    showError(error.error || 'Failed to load data');
+                    return;
+                }
+                
+                const data = await response.json();
+                currentData = data;  // Store for sorting
+                updateURL(begin, end);
+                displayData(data);
+            } catch (error) {
+                showError('Error loading data: ' + error.message);
+            }
+        }
+        
+        function displayData(data) {
+            // Update stats
+            document.getElementById('stat-ips').textContent = formatNumber(data.total_ips);
+            document.getElementById('stat-bytes').textContent = formatBytes(data.total_bytes);
+            document.getElementById('stat-packets').textContent = formatNumber(data.total_packets);
+            document.getElementById('stats-container').style.display = 'block';
+            
+            // Build table
+            const trafficByIp = data.traffic_by_ip;
+            
+            if (Object.keys(trafficByIp).length === 0) {
+                document.getElementById('table-container').innerHTML = '<div class="no-data">No traffic data found for this time range</div>';
+                return;
+            }
+            
+            // Sort by bytes descending
+            const sortedIps = Object.entries(trafficByIp).sort((a, b) => b[1].bytes - a[1].bytes);
+            
+            let tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th class="sortable" data-sort="ip">IP Address</th>
+                            <th class="sortable" data-sort="type">Type</th>
+                            <th class="sortable" data-sort="domain">Domain</th>
+                            <th class="sortable" data-sort="isp">ISP/Org</th>
+                            <th class="sortable" data-sort="bytes">Bytes</th>
+                            <th class="sortable" data-sort="packets">Packets</th>
+                            <th class="sortable" data-sort="ports">Ports <a href="https://en.wikipedia.org/wiki/Port_(computer_networking)" target="_blank">?</a></th>
+                            <th class="sortable" data-sort="processes">Processes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            sortedIps.forEach(([ip, stats], index) => {
+                const domain = stats.domains.length > 0 ? stats.domains.join(', ') : '-';
+                const isp = stats.isp && stats.isp.org ? `${stats.isp.org} (${stats.isp.country_code || ''})` : '-';
+                const ports = stats.ports.length > 0 ? stats.ports.join(', ') : '-';
+                
+                // Format processes
+                let processesHTML = '-';
+                if (stats.processes && stats.processes.length > 0) {
+                    const uniqueProcesses = [...new Set(stats.processes.map(p => `${p.name}:${p.pid}`))];
+                    processesHTML = uniqueProcesses.map(p => {
+                        const [name, pid] = p.split(':');
+                        return `<span class="process-link" onclick="showProcessDetails('${pid}')">${name} (${pid})</span>`;
+                    }).join(', ');
+                }
+                
+                tableHTML += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td><code>${ip}</code></td>
+                        <td><span class="ip-type ${stats.ip_type}">${stats.ip_type}</span></td>
+                        <td>${domain}</td>
+                        <td>${isp}</td>
+                        <td data-sort-value="${stats.bytes}">${formatBytes(stats.bytes)}</td>
+                        <td data-sort-value="${stats.packets}">${formatNumber(stats.packets)}</td>
+                        <td>${ports}</td>
+                        <td>${processesHTML}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+            
+            document.getElementById('table-container').innerHTML = tableHTML;
+            
+            // Add sort listeners
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.addEventListener('click', () => sortTable(th.dataset.sort));
+            });
+        }
+        
+        let currentSort = { column: 'bytes', direction: 'desc' };
+        let currentData = null;
+        
+        function sortTable(column) {
+            if (!currentData) return;
+            
+            // Toggle direction if same column
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'desc';
+            }
+            
+            // Sort the data
+            const trafficByIp = currentData.traffic_by_ip;
+            let sortedIps = Object.entries(trafficByIp);
+            
+            sortedIps.sort((a, b) => {
+                let aVal, bVal;
+                
+                switch(column) {
+                    case 'ip':
+                        aVal = a[0];
+                        bVal = b[0];
+                        break;
+                    case 'type':
+                        aVal = a[1].ip_type;
+                        bVal = b[1].ip_type;
+                        break;
+                    case 'domain':
+                        aVal = a[1].domains[0] || '';
+                        bVal = b[1].domains[0] || '';
+                        break;
+                    case 'isp':
+                        aVal = (a[1].isp && a[1].isp.org) || '';
+                        bVal = (b[1].isp && b[1].isp.org) || '';
+                        break;
+                    case 'bytes':
+                        aVal = a[1].bytes;
+                        bVal = b[1].bytes;
+                        break;
+                    case 'packets':
+                        aVal = a[1].packets;
+                        bVal = b[1].packets;
+                        break;
+                    case 'ports':
+                        aVal = a[1].ports.length;
+                        bVal = b[1].ports.length;
+                        break;
+                    case 'processes':
+                        aVal = (a[1].processes && a[1].processes.length) || 0;
+                        bVal = (b[1].processes && b[1].processes.length) || 0;
+                        break;
+                    default:
+                        return 0;
+                }
+                
+                if (typeof aVal === 'string') {
+                    return currentSort.direction === 'asc' ? 
+                        aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                } else {
+                    return currentSort.direction === 'asc' ? aVal - bVal : bVal - aVal;
+                }
+            });
+            
+            // Rebuild table with sorted data
+            rebuildTable(sortedIps);
+            
+            // Update header indicators
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.classList.remove('asc', 'desc');
+                if (th.dataset.sort === column) {
+                    th.classList.add(currentSort.direction);
+                }
+            });
+        }
+        
+        function rebuildTable(sortedIps) {
+            let tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th class="sortable" data-sort="ip">IP Address</th>
+                            <th class="sortable" data-sort="type">Type</th>
+                            <th class="sortable" data-sort="domain">Domain</th>
+                            <th class="sortable" data-sort="isp">ISP/Org</th>
+                            <th class="sortable" data-sort="bytes">Bytes</th>
+                            <th class="sortable" data-sort="packets">Packets</th>
+                            <th class="sortable" data-sort="ports">Ports</th>
+                            <th class="sortable" data-sort="processes">Processes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            sortedIps.forEach(([ip, stats], index) => {
+                const domain = stats.domains.length > 0 ? stats.domains.join(', ') : '-';
+                const isp = stats.isp && stats.isp.org ? `${stats.isp.org} (${stats.isp.country_code || ''})` : '-';
+                const ports = stats.ports.length > 0 ? stats.ports.join(', ') : '-';
+                
+                let processesHTML = '-';
+                if (stats.processes && stats.processes.length > 0) {
+                    const uniqueProcesses = [...new Set(stats.processes.map(p => `${p.name}:${p.pid}`))];
+                    processesHTML = uniqueProcesses.map(p => {
+                        const [name, pid] = p.split(':');
+                        return `<span class="process-link" onclick="showProcessDetails('${pid}')">${name} (${pid})</span>`;
+                    }).join(', ');
+                }
+                
+                tableHTML += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td><code>${ip}</code></td>
+                        <td><span class="ip-type ${stats.ip_type}">${stats.ip_type}</span></td>
+                        <td>${domain}</td>
+                        <td>${isp}</td>
+                        <td>${formatBytes(stats.bytes)}</td>
+                        <td>${formatNumber(stats.packets)}</td>
+                        <td>${ports}</td>
+                        <td>${processesHTML}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+            
+            document.getElementById('table-container').innerHTML = tableHTML;
+            
+            // Re-add sort listeners
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.addEventListener('click', () => sortTable(th.dataset.sort));
+                if (th.dataset.sort === currentSort.column) {
+                    th.classList.add(currentSort.direction);
+                }
+            });
+        }
+        
+        async function showProcessDetails(pid) {
+            const modal = document.getElementById('process-modal');
+            const content = document.getElementById('process-details');
+            
+            content.innerHTML = '<div class="loading">Loading process details...</div>';
+            modal.classList.add('active');
+            
+            try {
+                const response = await fetch(`/api/process/${pid}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    content.innerHTML = `<div class="error">${data.error}</div>`;
+                } else {
+                    content.innerHTML = `
+                        <h3>Process Details (PID: ${pid})</h3>
+                        <pre>${data.output}</pre>
+                    `;
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="error">Failed to load process details: ${error.message}</div>`;
+            }
+        }
+        
+        function closeModal() {
+            document.getElementById('process-modal').classList.remove('active');
+        }
+        
+        // ESC key to close modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+        
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const beginParam = urlParams.get('begin');
+            const endParam = urlParams.get('end');
+            
+            if (beginParam && endParam) {
+                // Load from URL parameters
+                const begin = new Date(beginParam);
+                const end = new Date(endParam);
+                document.getElementById('begin-time').value = formatDateTimeLocal(begin);
+                document.getElementById('end-time').value = formatDateTimeLocal(end);
+                loadData();
+            } else {
+                // Default to last 5 minutes
+                setRange(5);
+            }
+        });
+    </script>
+</body>
+</html>

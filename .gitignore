@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.log
+traffic_logs/
+*.db
+.env
+isp_cache.json

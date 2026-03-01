@@ -1,0 +1,84 @@
+# Port Mappings - Human-readable descriptions for common ports
+# Format: port_number = description
+# Lines starting with # are comments
+# You can add or modify entries as needed
+
+# Common Web Ports
+80 = HTTP
+443 = HTTPS
+8080 = HTTP Alternate
+8443 = HTTPS Alternate
+
+# DNS
+53 = DNS
+5353 = mDNS (Multicast DNS)
+
+# Email
+25 = SMTP
+110 = POP3
+143 = IMAP
+465 = SMTPS
+587 = SMTP Submission
+993 = IMAPS
+995 = POP3S
+
+# File Transfer
+20 = FTP Data
+21 = FTP Control
+22 = SSH/SFTP
+69 = TFTP
+989 = FTPS Data
+990 = FTPS Control
+
+# Remote Access
+23 = Telnet
+3389 = RDP (Remote Desktop)
+5900 = VNC
+
+# Database
+1433 = MS SQL Server
+3306 = MySQL/MariaDB
+5432 = PostgreSQL
+27017 = MongoDB
+6379 = Redis
+
+# Network Services
+67 = DHCP Server
+68 = DHCP Client
+123 = NTP (Network Time)
+161 = SNMP
+162 = SNMP Trap
+514 = Syslog
+
+# Media & Streaming
+554 = RTSP
+1935 = RTMP
+5004 = RTP
+5005 = RTCP
+
+# UPnP & SSDP
+1900 = SSDP (UPnP Discovery)
+
+# Messaging & Communication
+5222 = XMPP Client
+5269 = XMPP Server
+6667 = IRC
+
+# Gaming & Voice
+9987 = TeamSpeak 3
+25565 = Minecraft
+27015 = Source Engine Games
+
+# Development
+3000 = Node.js Dev Server
+4200 = Angular Dev Server
+5000 = Flask Dev Server
+8000 = Django Dev Server
+9000 = PHP-FPM
+
+# Other Common Services
+179 = BGP
+389 = LDAP
+636 = LDAPS
+1194 = OpenVPN
+1723 = PPTP
