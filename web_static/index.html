@@ -267,6 +267,17 @@
             color: #764ba2;
         }
         
+        .process-container {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #e3f2fd;
+            color: #0d47a1;
+            font-size: 0.75em;
+            font-weight: 600;
+        }
+        
         .modal-overlay {
             display: none;
             position: fixed;
@@ -522,11 +533,10 @@
                 // Format processes
                 let processesHTML = '-';
                 if (stats.processes && stats.processes.length > 0) {
-                    const uniqueProcesses = [...new Set(stats.processes.map(p => `${p.name}:${p.pid}`))];
-                    processesHTML = uniqueProcesses.map(p => {
-                        const [name, pid] = p.split(':');
-                        return `<span class="process-link" onclick="showProcessDetails('${pid}')">${name} (${pid})</span>`;
-                    }).join(', ');
+                    const dedupedProcesses = dedupeProcesses(stats.processes);
+                    if (dedupedProcesses.length > 0) {
+                        processesHTML = dedupedProcesses.map(renderProcessEntry).join(', ');
+                    }
                 }
                 
                 tableHTML += `
@@ -661,11 +671,10 @@
                 
                 let processesHTML = '-';
                 if (stats.processes && stats.processes.length > 0) {
-                    const uniqueProcesses = [...new Set(stats.processes.map(p => `${p.name}:${p.pid}`))];
-                    processesHTML = uniqueProcesses.map(p => {
-                        const [name, pid] = p.split(':');
-                        return `<span class="process-link" onclick="showProcessDetails('${pid}')">${name} (${pid})</span>`;
-                    }).join(', ');
+                    const dedupedProcesses = dedupeProcesses(stats.processes);
+                    if (dedupedProcesses.length > 0) {
+                        processesHTML = dedupedProcesses.map(renderProcessEntry).join(', ');
+                    }
                 }
                 
                 tableHTML += `
@@ -725,6 +734,63 @@
         
         function closeModal() {
             document.getElementById('process-modal').classList.remove('active');
+        }
+
+        function dedupeProcesses(processes) {
+            const seen = new Set();
+            const unique = [];
+            processes.forEach(proc => {
+                if (!proc || !proc.pid) {
+                    return;
+                }
+                const key = `${proc.pid}:${proc.name || ''}:${getContainerLabel(proc.container)}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    unique.push(proc);
+                }
+            });
+            return unique;
+        }
+
+        function getContainerLabel(container) {
+            if (!container) {
+                return '';
+            }
+            if (typeof container === 'string') {
+                return container;
+            }
+            if (Array.isArray(container)) {
+                return getContainerLabel(container[0]);
+            }
+            if (typeof container === 'object') {
+                const nameLike = container.name || container.Name || container.names || container.Names;
+                if (nameLike) {
+                    return Array.isArray(nameLike) ? nameLike[0] : nameLike;
+                }
+                const idLike = container.id || container.ID || container.container_id;
+                if (idLike) {
+                    const idStr = String(idLike);
+                    return idStr.length > 12 ? idStr.slice(0, 12) : idStr;
+                }
+                if (container.image || container.Image) {
+                    return container.image || container.Image;
+                }
+                try {
+                    return JSON.stringify(container);
+                } catch (_) {
+                    return String(container);
+                }
+            }
+            return String(container);
+        }
+
+        function renderProcessEntry(proc) {
+            const label = `<span class="process-link" onclick="showProcessDetails('${proc.pid}')">${proc.name || 'unknown'} (${proc.pid})</span>`;
+            const containerLabel = getContainerLabel(proc.container);
+            if (containerLabel) {
+                return `${label}<span class="process-container" title="Docker container">${containerLabel}</span>`;
+            }
+            return label;
         }
         
         // ESC key to close modal

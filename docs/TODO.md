@@ -4,12 +4,11 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
 
 ## Today
 
-- remove FIXES_SUMMARY.md and simimlar files
 - put other MDs into docs folder
 - README.md should reference all the docs
 - what other products do this?
-- web interface
 - install as service so it's restarted if it crashes
+- oauth
 - use mermaid for diagrams
 - create SBOM
 - test traffic directions

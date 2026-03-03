@@ -10,9 +10,10 @@ from collections import defaultdict
 
 
 class ProcessTracker:
-    def __init__(self):
+    def __init__(self, proc_root='/proc'):
         self.socket_cache = {}  # Cache socket -> process mappings
         self.process_cache = {}  # Cache PID -> process info
+        self.proc_root = proc_root
         
     def identify_process(self, src_ip, src_port, protocol='tcp'):
         """
@@ -61,7 +62,7 @@ class ProcessTracker:
             socket_id = f"{ip_hex}:{port_hex}"
             
             # Read /proc/net file
-            proc_file = f"/proc/net/{protocol}"
+            proc_file = os.path.join(self.proc_root, 'net', protocol)
             if not os.path.exists(proc_file):
                 return None
             
@@ -92,7 +93,7 @@ class ProcessTracker:
         """Find which process owns a socket inode"""
         try:
             # Search through all processes
-            for pid in os.listdir('/proc'):
+            for pid in os.listdir(self.proc_root):
                 if not pid.isdigit():
                     continue
                 
@@ -102,7 +103,7 @@ class ProcessTracker:
                     if cached.get('inode') == inode:
                         return cached
                 
-                fd_dir = f"/proc/{pid}/fd"
+                fd_dir = os.path.join(self.proc_root, pid, 'fd')
                 if not os.path.exists(fd_dir):
                     continue
                 
@@ -128,7 +129,7 @@ class ProcessTracker:
         """Get detailed information about a process"""
         try:
             # Read command line
-            cmdline_path = f"/proc/{pid}/cmdline"
+            cmdline_path = os.path.join(self.proc_root, pid, 'cmdline')
             if os.path.exists(cmdline_path):
                 with open(cmdline_path, 'r') as f:
                     cmdline = f.read().replace('\x00', ' ').strip()
@@ -139,7 +140,7 @@ class ProcessTracker:
             
             # Read process name from status
             process_name = None
-            status_path = f"/proc/{pid}/status"
+            status_path = os.path.join(self.proc_root, pid, 'status')
             if os.path.exists(status_path):
                 with open(status_path, 'r') as f:
                     for line in f:
@@ -153,7 +154,7 @@ class ProcessTracker:
             # Get user ID
             uid = None
             try:
-                stat_info = os.stat(f"/proc/{pid}")
+                stat_info = os.stat(os.path.join(self.proc_root, pid))
                 uid = stat_info.st_uid
             except:
                 pass
@@ -176,7 +177,7 @@ class ProcessTracker:
     def _get_container_from_pid(self, pid):
         """Check if process is running in a Docker container"""
         try:
-            cgroup_path = f'/proc/{pid}/cgroup'
+            cgroup_path = os.path.join(self.proc_root, pid, 'cgroup')
             if not os.path.exists(cgroup_path):
                 return None
             

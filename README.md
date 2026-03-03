@@ -30,14 +30,13 @@ A Linux-based network packet monitoring tool that captures outgoing traffic, per
 
 ```bash
 # 1. Install dependencies
-# For conda users:
-conda env create -f environment.yml
-conda activate abnemo
+# Option A: System packages (recommended if using system Python)
+sudo apt install python3-scapy python3-dnspython python3-tabulate  # Ubuntu/Debian
 
-# For pip users:
+# Option B: pip (if you need specific versions or use virtual environments)
 pip install -r requirements.txt
 
-# For eBPF support (both conda and pip users):
+# For eBPF support:
 sudo apt install python3-bpfcc  # Ubuntu/Debian
 
 # 2. Make wrapper script executable
@@ -92,16 +91,17 @@ sudo bash unblock_rules.sh
 
 ## Installation
 
-### Option 1: Conda Environment (Recommended)
+### Option 1: System Packages (Recommended)
 
-If you're using conda/miniconda, use the environment file for Python dependencies:
+If you're using system Python, install dependencies via your package manager:
 
 ```bash
-# Create and activate the conda environment
-conda env create -f environment.yml
-conda activate abnemo
+# Install Python dependencies
+sudo apt install python3-scapy python3-dnspython python3-tabulate  # Ubuntu/Debian
+# OR
+sudo dnf install python3-scapy python3-dns python3-tabulate        # Fedora/RHEL
 
-# Install BCC system package (required for eBPF)
+# Install BCC system package (for eBPF support)
 sudo apt install python3-bpfcc  # Ubuntu/Debian
 # OR
 sudo dnf install python3-bcc    # Fedora/RHEL
@@ -110,28 +110,21 @@ sudo dnf install python3-bcc    # Fedora/RHEL
 chmod +x abnemo.sh
 ```
 
-**What gets installed:**
-- `scapy`, `dnspython`, `tabulate` - Python packages (via conda environment)
-- `python3-bpfcc` - BCC system package (required for eBPF, not available in conda)
+**Benefits:**
+- No dependency conflicts
+- System-managed updates
+- Works seamlessly with eBPF
+- No virtual environment needed
 
-**Important for eBPF:** BCC is installed system-wide, so you must deactivate conda before using eBPF:
-```bash
-# Deactivate conda (may need twice if base auto-activates)
-conda deactivate
+### Option 2: pip (Virtual Environments)
 
-# Install Python deps system-wide
-sudo apt install python3-scapy python3-dnspython python3-tabulate
-
-# Build and run
-./build_ebpf.sh
-sudo python3 abnemo.py monitor --ebpf
-```
-
-### Option 2: System Python with pip
-
-If you don't need eBPF support or prefer system packages:
+If you prefer using pip (e.g., in a virtual environment):
 
 ```bash
+# Create virtual environment (optional)
+python3 -m venv venv
+source venv/bin/activate
+
 # Install Python dependencies
 pip install -r requirements.txt
 
@@ -144,18 +137,17 @@ sudo dnf install python3-bcc    # Fedora/RHEL
 chmod +x abnemo.sh
 ```
 
-**Note:** If using system packages for BCC, you must deactivate conda before running:
-```bash
-conda deactivate
-./build_ebpf.sh
-```
+**Note:** BCC must be installed system-wide and cannot be installed via pip.
 
-### Option 3: System-wide Installation
+### Option 3: Global pip Installation
 
-Install everything system-wide (not recommended):
+Install Python packages globally with pip:
 
 ```bash
-sudo pip3 install -r requirements.txt
+pip install -r requirements.txt
+# OR on newer systems that prevent global pip installs:
+sudo apt install python3-scapy python3-dnspython python3-tabulate
+
 sudo apt install python3-bpfcc
 chmod +x abnemo.sh
 ```
@@ -169,14 +161,14 @@ When using `sudo`, the system may use a different Python installation than your 
 ./abnemo.sh monitor
 ```
 
-**Option 2: Specify full Python path**
+**Option 2: Install packages system-wide**
 ```bash
-sudo /home/ant/miniconda3/bin/python3 abnemo.py monitor
+sudo apt install python3-scapy python3-dnspython python3-tabulate
 ```
 
-**Option 3: Install packages system-wide**
+**Option 3: Specify full Python path (if using virtual environment)**
 ```bash
-sudo pip3 install -r requirements.txt
+sudo /path/to/venv/bin/python3 abnemo.py monitor
 ```
 
 ## Usage

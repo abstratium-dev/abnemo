@@ -680,7 +680,7 @@ self.bpf["events"].open_perf_buffer(self._handle_event, page_cnt=256)
 
 | Feature | Standard Mode | eBPF Mode |
 |---------|--------------|-----------|
-| **Setup Complexity** | Easy (pip install) | Medium (BCC required) |
+| **Setup Complexity** | Easy (apt/pip install) | Medium (BCC required) |
 | **Kernel Requirement** | Any | 4.x+ |
 | **CPU Overhead** | 4-10% | 1.6-3.5% |
 | **Memory Overhead** | ~50 MB | ~100 MB |

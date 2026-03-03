@@ -153,9 +153,10 @@ while True:
 
 ### Python Dependencies
 ```bash
-pip install bcc
-# or
-apt install python3-bpfcc
+# BCC must be installed via system package manager
+sudo apt install python3-bpfcc  # Ubuntu/Debian
+# OR
+sudo dnf install python3-bcc    # Fedora/RHEL
 ```
 
 ### Check if eBPF is available
