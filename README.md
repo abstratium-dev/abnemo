@@ -473,7 +473,66 @@ See `EBPF_ENHANCEMENT.md` for detailed architecture and implementation notes.
 
 **See also:** `ADVANCED_FILTERING.md` for detailed technical information about process identification methods.
 
-### Common Commands
+## Securing the Web UI with Abstrauth (OAuth 2.0 BFF)
+
+The live dashboard can require sign-in via Abstrauth using the **Backend-For-Frontend (BFF)** pattern. When OAuth is configured, the backend negotiates Authorization Code + PKCE on behalf of the browser, stores tokens server-side, and issues only HTTP-only session cookies. Tokens, PKCE parameters, and client secrets never reach the frontend.
+
+### Required Environment Variables
+
+Set these before starting `./abnemo.sh monitor --web` (or when running `web_server.py`). Authentication gates activate automatically once all required fields are present.
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ABSTRAUTH_CLIENT_ID` | ✅ | OAuth confidential client ID registered in Abstrauth |
+| `ABSTRAUTH_CLIENT_SECRET` | ✅ | Client secret paired with the client ID |
+| `ABSTRAUTH_AUTHORIZATION_ENDPOINT` | ✅ | Full URL to Abstrauth's `/oauth2/authorize` endpoint |
+| `ABSTRAUTH_TOKEN_ENDPOINT` | ✅ | Full URL to the `/oauth2/token` endpoint |
+| `ABSTRAUTH_REDIRECT_URI` | ✅ | Callback handled by Abnemo (e.g., `https://monitor.example.com/oauth/callback`) |
+| `ABSTRAUTH_SCOPE` | ⛔ (defaults to `openid profile email`) | Space-delimited scopes requested during login |
+| `ABSTRAUTH_SESSION_COOKIE` | ⛔ (`abnemo_session`) | Name of the HTTP-only session cookie |
+| `ABSTRAUTH_COOKIE_SECURE` | ⛔ (`false`) | Set to `true` in production to force HTTPS-only cookies |
+| `ABSTRAUTH_COOKIE_SAMESITE` | _Not configurable_ (`Lax`) | Fixed to `Lax` to ensure `/oauth/callback` receives the session cookie |
+| `ABSTRAUTH_SESSION_TTL` | ⛔ (`3600`) | Session lifetime in seconds |
+| `ABSTRAUTH_REQUIRED_GROUP` | ⛔ | Name of a single Abstrauth group required to view monitoring data |
+| `ABSTRAUTH_REQUIRED_GROUPS` | ⛔ | Comma-separated list of acceptable groups; user must belong to at least one |
+
+> ⚠️ The redirect URI **must exactly match** what is registered on the Abstrauth client, including scheme/host/port/path.
+
+### Role / Group Enforcement
+
+If any group requirement is configured (`ABSTRAUTH_REQUIRED_GROUP` or `ABSTRAUTH_REQUIRED_GROUPS`), Abnemo checks the user's `groups` claim inside the ID/access token payload. Users must belong to **at least one** of the configured groups to access `/api/traffic`, `/api/process/<pid>`, etc. Missing groups result in `403` with `code=missing_required_group`, and the UI explains which role is required.
+
+Example configuration:
+
+```bash
+export ABSTRAUTH_CLIENT_ID="abnemo-monitor"
+export ABSTRAUTH_CLIENT_SECRET="<super-secret>"
+export ABSTRAUTH_AUTHORIZATION_ENDPOINT="https://auth.example.com/oauth2/authorize"
+export ABSTRAUTH_TOKEN_ENDPOINT="https://auth.example.com/oauth2/token"
+export ABSTRAUTH_REDIRECT_URI="https://monitor.example.com/oauth/callback"
+export ABSTRAUTH_REQUIRED_GROUPS="abnemo_admins,abnemo_viewers"
+export ABSTRAUTH_COOKIE_SECURE=true   # strongly recommended when using HTTPS
+```
+
+Then launch:
+
+```bash
+./abnemo.sh monitor --web --web-port 8443
+```
+
+### User Flow (BFF)
+
+1. Browser loads the dashboard ➜ JS calls `/api/user`
+2. If unauthenticated, the UI shows "Sign In" and directs to `/oauth/login`
+3. Backend generates PKCE + state, stores them server-side, and redirects to Abstrauth
+4. After approval, Abstrauth redirects to `/oauth/callback`
+5. Backend exchanges the authorization code for tokens using the confidential client credentials and issues a secure session cookie
+6. `/api/user` now responds with `authenticated: true`, parsed JWT claims (name/email/groups), and whether the user has access
+7. Every subsequent API request verifies both login state and group membership before returning monitoring data
+
+If the Abstrauth variables are not set, the server stays open (no authentication required) so development and local testing remain frictionless.
+
+## Common Commands
 
 ```bash
 # Monitor specific interface with periodic summaries

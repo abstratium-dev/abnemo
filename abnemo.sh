@@ -11,10 +11,13 @@ else
     PYTHON=$(which python3)
 fi
 
-# Check if we need sudo for the monitor command
-if [[ "$1" == "monitor" ]]; then
-    echo "[*] Running with sudo using Python: $PYTHON"
-    sudo "$PYTHON" "$SCRIPT_DIR/abnemo.py" "$@"
-else
-    "$PYTHON" "$SCRIPT_DIR/abnemo.py" "$@"
+# Optional environment file that exports ABSTRAUTH_* vars
+ENV_FILE="/w/abstratium-abnemo.env"
+if [[ -f "$ENV_FILE" ]]; then
+    # shellcheck disable=SC1090
+    source "$ENV_FILE"
 fi
+
+# Check if we need sudo for the monitor command
+
+"$PYTHON" "$SCRIPT_DIR/abnemo.py" "$@"

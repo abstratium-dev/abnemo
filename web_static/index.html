@@ -331,6 +331,49 @@
             font-size: 0.9em;
         }
         
+        .auth-card {
+            display: none;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .auth-card.active {
+            display: flex;
+        }
+
+        .auth-card strong {
+            color: #333;
+        }
+
+        .auth-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .auth-details {
+            color: #555;
+            font-size: 0.95em;
+            margin-top: 6px;
+        }
+
+        .button-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 1px solid #dcdfe6;
+        }
+
+        .button-secondary:hover {
+            background: #edf1f7;
+            box-shadow: none;
+        }
+
         @media (max-width: 768px) {
             .time-controls {
                 grid-template-columns: 1fr;
@@ -348,53 +391,66 @@
             <h1>🌐 Abnemo</h1>
             <p class="subtitle">Network Traffic Monitor & Analyzer</p>
         </header>
-        
-        <div class="controls">
-            <div class="time-controls">
-                <div class="input-group">
-                    <label for="begin-time">Begin Time (Inclusive)</label>
-                    <input type="datetime-local" id="begin-time" step="1">
+
+        <div class="auth-card" id="auth-card">
+            <div>
+                <div id="auth-status-text"><strong>Authentication:</strong> Checking…</div>
+                <div class="auth-details" id="auth-user-details"></div>
+            </div>
+            <div class="auth-actions">
+                <button id="auth-login-btn" class="button-secondary" onclick="startLogin()">Sign In</button>
+                <button id="auth-logout-btn" class="button-secondary" onclick="logout()">Sign Out</button>
+            </div>
+        </div>
+
+        <div id="app-content">
+            <div class="controls">
+                <div class="time-controls">
+                    <div class="input-group">
+                        <label for="begin-time">Begin Time (Inclusive)</label>
+                        <input type="datetime-local" id="begin-time" step="1">
+                    </div>
+                    <div class="input-group">
+                        <label for="end-time">End Time (Exclusive)</label>
+                        <input type="datetime-local" id="end-time" step="1">
+                    </div>
+                    <button onclick="loadData()">Load Data</button>
                 </div>
-                <div class="input-group">
-                    <label for="end-time">End Time (Exclusive)</label>
-                    <input type="datetime-local" id="end-time" step="1">
+                
+                <div class="quick-ranges">
+                    <button class="quick-btn" onclick="setRange(5)">Last 5 min</button>
+                    <button class="quick-btn" onclick="setRange(15)">Last 15 min</button>
+                    <button class="quick-btn" onclick="setRange(30)">Last 30 min</button>
+                    <button class="quick-btn" onclick="setRange(60)">Last 1 hour</button>
+                    <button class="quick-btn" onclick="setRange(360)">Last 6 hours</button>
+                    <button class="quick-btn" onclick="setRange(1440)">Last 24 hours</button>
                 </div>
-                <button onclick="loadData()">Load Data</button>
             </div>
             
-            <div class="quick-ranges">
-                <button class="quick-btn" onclick="setRange(5)">Last 5 min</button>
-                <button class="quick-btn" onclick="setRange(15)">Last 15 min</button>
-                <button class="quick-btn" onclick="setRange(30)">Last 30 min</button>
-                <button class="quick-btn" onclick="setRange(60)">Last 1 hour</button>
-                <button class="quick-btn" onclick="setRange(360)">Last 6 hours</button>
-                <button class="quick-btn" onclick="setRange(1440)">Last 24 hours</button>
-            </div>
-        </div>
-        
-        <div id="error-container"></div>
-        
-        <div class="stats" id="stats-container" style="display: none;">
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-ips">0</div>
-                    <div class="stat-label">Unique IPs</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-bytes">0</div>
-                    <div class="stat-label">Total Bytes</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-packets">0</div>
-                    <div class="stat-label">Total Packets</div>
+            <div id="error-container"></div>
+            
+            <div class="stats" id="stats-container" style="display: none;">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-ips">0</div>
+                        <div class="stat-label">Unique IPs</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-bytes">0</div>
+                        <div class="stat-label">Total Bytes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-packets">0</div>
+                        <div class="stat-label">Total Packets</div>
+                    </div>
                 </div>
             </div>
-        </div>
-        
-        <div class="traffic-table">
-            <h2 style="margin-bottom: 20px; color: #333;">Traffic Details</h2>
-            <div id="table-container">
-                <div class="loading">Loading data...</div>
+            
+            <div class="traffic-table">
+                <h2 style="margin-bottom: 20px; color: #333;">Traffic Details</h2>
+                <div id="table-container">
+                    <div class="loading">Loading data...</div>
+                </div>
             </div>
         </div>
     </div>
@@ -408,6 +464,22 @@
     </div>
     
     <script>
+        let authState = { oauth_enabled: false, authenticated: true, user: null, required_group: null, required_groups: null, has_access: true };
+
+        function updateAppVisibility() {
+            const appContent = document.getElementById('app-content');
+            if (!appContent) return;
+            if (!authState.oauth_enabled) {
+                appContent.style.display = '';
+                return;
+            }
+            const visible = authState.authenticated && authState.has_access;
+            appContent.style.display = visible ? '' : 'none';
+            if (!visible) {
+                document.getElementById('error-container').innerHTML = '';
+            }
+        }
+
         function formatBytes(bytes) {
             if (bytes === 0) return '0 B';
             const k = 1024;
@@ -457,6 +529,17 @@
         }
         
         async function loadData() {
+            if (authState.oauth_enabled) {
+                if (!authState.authenticated) {
+                    showError('Please sign in to load traffic data.');
+                    return;
+                }
+                if (!authState.has_access) {
+                    const roleMsg = authState.required_group ? ` You must belong to the "${authState.required_group}" group to view monitoring data.` : '';
+                    showError(`Your account is not authorized to view this data.${roleMsg}`);
+                    return;
+                }
+            }
             const beginInput = document.getElementById('begin-time').value;
             const endInput = document.getElementById('end-time').value;
             
@@ -800,8 +883,115 @@
             }
         });
         
+        async function fetchAuthStatus() {
+            try {
+                const response = await fetch('/api/user');
+                if (response.status === 401) {
+                    const data = await response.json().catch(() => ({}));
+                    authState = {
+                        oauth_enabled: data.oauth_enabled ?? true,
+                        authenticated: false,
+                        user: null,
+                        required_group: data.required_group ?? null,
+                        required_groups: data.required_groups ?? null,
+                        has_access: false
+                    };
+                } else if (response.ok) {
+                    const data = await response.json();
+                    authState = {
+                        oauth_enabled: data.oauth_enabled ?? false,
+                        authenticated: data.authenticated ?? true,
+                        user: data.user || null,
+                        required_group: data.required_group ?? null,
+                        required_groups: data.required_groups ?? null,
+                        has_access: data.has_access ?? true
+                    };
+                } else if (response.status === 403) {
+                    const data = await response.json().catch(() => ({}));
+                    authState = {
+                        oauth_enabled: data.oauth_enabled ?? true,
+                        authenticated: data.authenticated ?? true,
+                        user: data.user || null,
+                        required_group: data.required_group ?? null,
+                        required_groups: data.required_groups ?? null,
+                        has_access: false
+                    };
+                } else {
+                    authState = { oauth_enabled: false, authenticated: true, user: null, required_group: null, required_groups: null, has_access: true };
+                }
+            } catch (error) {
+                console.warn('Failed to fetch auth state', error);
+                authState = { oauth_enabled: false, authenticated: true, user: null, required_group: null, required_groups: null, has_access: true };
+            }
+            updateAuthCard();
+            updateAppVisibility();
+            return authState;
+        }
+
+        function updateAuthCard() {
+            const card = document.getElementById('auth-card');
+            const statusText = document.getElementById('auth-status-text');
+            const userDetails = document.getElementById('auth-user-details');
+            const loginBtn = document.getElementById('auth-login-btn');
+            const logoutBtn = document.getElementById('auth-logout-btn');
+
+            if (!card) {
+                return;
+            }
+
+            if (!authState.oauth_enabled) {
+                card.classList.remove('active');
+                return;
+            }
+
+            card.classList.add('active');
+            if (authState.authenticated) {
+                const displayName = (authState.user && (authState.user.name || authState.user.email || authState.user.sub)) || 'Authenticated user';
+                const emailDetail = authState.user?.email ? `Email: ${authState.user.email}` : '';
+                if (authState.has_access) {
+                    statusText.innerHTML = `<strong>Authentication:</strong> Signed in as ${displayName}`;
+                    userDetails.textContent = emailDetail;
+                    loginBtn.style.display = 'none';
+                    logoutBtn.style.display = 'inline-block';
+                    clearError();
+                } else {
+                    statusText.innerHTML = `<strong>Authentication:</strong> Signed in as ${displayName} (insufficient permissions)`;
+                    const requiredGroupLabel = authState.required_groups && authState.required_groups.length > 0
+                        ? `You must belong to one of the following groups to view monitoring data: ${authState.required_groups.join(', ')}`
+                        : 'Your account is not authorized to view monitoring data.';
+                    userDetails.textContent = `${requiredGroupLabel}${emailDetail ? ' — ' + emailDetail : ''}`;
+                    loginBtn.style.display = 'inline-block';
+                    logoutBtn.style.display = 'inline-block';
+                }
+            } else {
+                statusText.innerHTML = '<strong>Authentication:</strong> Sign in required';
+                userDetails.textContent = 'Please authenticate via Abstrauth to access traffic data.';
+                loginBtn.style.display = 'inline-block';
+                logoutBtn.style.display = 'none';
+            }
+            updateAppVisibility();
+        }
+
+        function startLogin() {
+            window.location.href = '/oauth/login';
+        }
+
+        async function logout() {
+            if (!authState.oauth_enabled) {
+                return;
+            }
+            try {
+                await fetch('/api/logout', { method: 'POST' });
+            } catch (error) {
+                console.warn('Logout failed', error);
+            }
+            await fetchAuthStatus();
+            showError('You have been signed out. Please sign in again to load data.');
+        }
+
         // Initialize on page load
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
+            await fetchAuthStatus();
             const urlParams = new URLSearchParams(window.location.search);
             const beginParam = urlParams.get('begin');
             const endParam = urlParams.get('end');
@@ -812,7 +1002,9 @@
                 const end = new Date(endParam);
                 document.getElementById('begin-time').value = formatDateTimeLocal(begin);
                 document.getElementById('end-time').value = formatDateTimeLocal(end);
-                loadData();
+                if (!authState.oauth_enabled || authState.authenticated) {
+                    loadData();
+                }
             } else {
                 // Default to last 5 minutes
                 setRange(5);
