@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTables Packet Flow Diagram</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .description {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .mermaid {
+            text-align: center;
+            background-color: white;
+        }
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 0 5px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>IPTables Packet Flow Through Firewall</h1>
+        <div class="description">
+            Visualizing how incoming packets are routed through the firewall with Docker enrichment
+        </div>
+        
+        <div class="controls">
+            <button onclick="zoomIn()">Zoom In</button>
+            <button onclick="zoomOut()">Zoom Out</button>
+            <button onclick="resetZoom()">Reset Zoom</button>
+        </div>
+        
+        <div id="diagram-container" style="overflow: auto;">
+            <div class="mermaid">
+flowchart TD
+    %% Packet Flow Through Firewall
+
+    Start([Incoming Packet]) --> InputChain
+
+    %% INPUT Chain
+    InputChain{INPUT Chain<br/>Policy: DROP}
+    InputChain --> Input0[ufw-before-logging-input]
+    InputChain --> Input1[ufw-before-input]
+    Input1 --> ufw_before_inputChain
+    InputChain --> Input2[ufw-after-input]
+    Input2 --> ufw_after_inputChain
+    InputChain --> Input3[ufw-after-logging-input]
+    Input3 --> ufw_after_logging_inputChain
+    InputChain --> Input4[ufw-reject-input]
+    InputChain --> Input5[ufw-track-input]
+
+    %% FORWARD Chain
+    ForwardChain{FORWARD Chain<br/>Policy: DROP}
+    Start --> ForwardChain
+    ForwardChain --> Forward0[DOCKER-USER]
+    Forward0 --> DOCKER_USERChain
+    ForwardChain --> Forward1[DOCKER-FORWARD]
+    Forward1 --> DOCKER_FORWARDChain
+    ForwardChain --> Forward2[ufw-before-logging-forward]
+    ForwardChain --> Forward3[ufw-before-forward]
+    ForwardChain --> Forward4[ufw-after-forward]
+    ForwardChain --> Forward5[ufw-after-logging-forward]
+    ForwardChain --> Forward6[ufw-reject-forward]
+    ForwardChain --> Forward7[ufw-track-forward]
+    ForwardChain --> Forward8[ACCEPT<br/>in: wg0]
+    ForwardChain --> Forward9[ACCEPT<br/>out: wg0]
+
+    %% DOCKER-FORWARD Chain
+    DOCKER_FORWARDChain{DOCKER-FORWARD Chain}
+    DOCKER_FORWARDChain --> DockerForward0[DOCKER-CT]
+    DockerForward0 --> DOCKER_CTChain
+    DOCKER_FORWARDChain --> DockerForward1[DOCKER-INTERNAL]
+    DOCKER_FORWARDChain --> DockerForward2[DOCKER-BRIDGE]
+    DockerForward2 --> DOCKER_BRIDGEChain
+    DOCKER_FORWARDChain --> DockerForward3[ACCEPT<br/>in: serverless-qw-ant-kutschera-gmail-comchc...]
+    DockerForward3 --> Accept([ACCEPT])
+    DOCKER_FORWARDChain --> DockerForward4[ACCEPT<br/>in: maxant ‹br-979cf8868›]
+    DockerForward4 --> Accept([ACCEPT])
+    DOCKER_FORWARDChain --> DockerForward5[ACCEPT<br/>in: serverless-qw-thecrafthousech-gmail-comd...]
+    DockerForward5 --> Accept([ACCEPT])
+    DOCKER_FORWARDChain --> DockerForward6[ACCEPT<br/>in: abstratium-test ‹br-ea9c19cd4›]
+    DockerForward6 --> Accept([ACCEPT])
+    DOCKER_FORWARDChain --> DockerForward7[ACCEPT<br/>in: serverless ‹br-ef37f7b34›]
+    DockerForward7 --> Accept([ACCEPT])
+
+    %% DOCKER Chain (sample rules)
+    DOCKERChain{DOCKER Chain}
+    DOCKERChain --> Docker0[ACCEPT<br/>proto: 6<br/>to: maxant-test-sre ‹172.19.0.28›<br/>port: 9997<br/>net: maxant ‹br-979cf8868›]
+    Docker0 --> Accept
+    DOCKERChain --> Docker1[ACCEPT<br/>proto: 6<br/>to: maxant-sre ‹172.19.0.23›<br/>port: 9997<br/>net: maxant ‹br-979cf8868›]
+    Docker1 --> Accept
+    DOCKERChain --> Docker2[ACCEPT<br/>proto: 6<br/>to: abstratium-test-abstrauth ‹173.18.0...<br/>port: 9002<br/>net: abstratium-test ‹br-ea9c19cd4...]
+    Docker2 --> Accept
+    DOCKERChain --> Docker3[ACCEPT<br/>proto: 6<br/>to: abstratium-test-abstrauth ‹173.18.0...<br/>port: 8080<br/>net: abstratium-test ‹br-ea9c19cd4...]
+    Docker3 --> Accept
+    DOCKERChain --> Docker4[ACCEPT<br/>proto: 6<br/>to: abstratium-abstrauth ‹173.18.0.135›<br/>port: 9002<br/>net: abstratium ‹br-3fbf23976›]
+    Docker4 --> Accept
+    DOCKERChain --> DockerDrop0[DROP<br/>net: serverless-qw-ant-kutschera-gmail-comchc...]
+    DockerDrop0 --> Drop([DROP])
+    DOCKERChain --> DockerDrop1[DROP<br/>net: maxant ‹br-979cf8868›]
+    DockerDrop1 --> Drop([DROP])
+    DOCKERChain --> DockerDrop2[DROP<br/>net: serverless-qw-thecrafthousech-gmail-comd...]
+    DockerDrop2 --> Drop([DROP])
+
+    %% DOCKER-CT Chain (Connection Tracking)
+    DOCKER_CTChain{DOCKER-CT Chain}
+    DOCKER_CTChain --> DockerCT0[ACCEPT<br/>ESTABLISHED<br/>net: serverless-qw-ant-kutschera-gmail-comchc...]
+    DockerCT0 --> Accept
+    DOCKER_CTChain --> DockerCT1[ACCEPT<br/>ESTABLISHED<br/>net: maxant ‹br-979cf8868›]
+    DockerCT1 --> Accept
+    DOCKER_CTChain --> DockerCT2[ACCEPT<br/>ESTABLISHED<br/>net: serverless-qw-thecrafthousech-gmail-comd...]
+    DockerCT2 --> Accept
+    DOCKER_CTChain --> DockerCT3[ACCEPT<br/>ESTABLISHED<br/>net: abstratium-test ‹br-ea9c19cd4›]
+    DockerCT3 --> Accept
+    DOCKER_CTChain --> DockerCT4[ACCEPT<br/>ESTABLISHED<br/>net: serverless ‹br-ef37f7b34›]
+    DockerCT4 --> Accept
+
+    %% DOCKER-BRIDGE Chain
+    DOCKER_BRIDGEChain{DOCKER-BRIDGE Chain}
+    DOCKER_BRIDGEChain --> DockerBridge0[DOCKER<br/>net: serverless-qw-ant-kutschera-gmail-comchc...]
+    DockerBridge0 --> DOCKERChain
+    DOCKER_BRIDGEChain --> DockerBridge1[DOCKER<br/>net: maxant ‹br-979cf8868›]
+    DockerBridge1 --> DOCKERChain
+    DOCKER_BRIDGEChain --> DockerBridge2[DOCKER<br/>net: serverless-qw-thecrafthousech-gmail-comd...]
+    DockerBridge2 --> DOCKERChain
+    DOCKER_BRIDGEChain --> DockerBridge3[DOCKER<br/>net: abstratium-test ‹br-ea9c19cd4›]
+    DockerBridge3 --> DOCKERChain
+    DOCKER_BRIDGEChain --> DockerBridge4[DOCKER<br/>net: serverless ‹br-ef37f7b34›]
+    DockerBridge4 --> DOCKERChain
+
+    %% UFW Chains (simplified)
+    ufw_before_inputChain{ufw-before-input}
+    Input0 --> ufw_before_inputChain
+    ufw_before_inputChain --> ufwAccept([ACCEPT<br/>Established/Related])
+    ufw_before_inputChain --> ufwUser{ufw-user-input}
+    ufwUser --> ufwAcceptPorts([ACCEPT<br/>Allowed Ports])
+    ufwUser --> ufwDrop([DROP<br/>Policy])
+
+    %% Final Decisions
+    Accept:::acceptStyle
+    Drop:::dropStyle
+    ufwAccept:::acceptStyle
+    ufwAcceptPorts:::acceptStyle
+    ufwDrop:::dropStyle
+
+    %% Styling
+    classDef acceptStyle fill:#90EE90,stroke:#006400,stroke-width:2px
+    classDef dropStyle fill:#FFB6C6,stroke:#8B0000,stroke-width:2px
+            </div>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: false,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+
+        let currentZoom = 1;
+
+        function zoomIn() {
+            currentZoom += 0.1;
+            applyZoom();
+        }
+
+        function zoomOut() {
+            currentZoom = Math.max(0.3, currentZoom - 0.1);
+            applyZoom();
+        }
+
+        function resetZoom() {
+            currentZoom = 1;
+            applyZoom();
+        }
+
+        function applyZoom() {
+            const diagram = document.querySelector('.mermaid svg');
+            if (diagram) {
+                diagram.style.transform = `scale(${currentZoom})`;
+                diagram.style.transformOrigin = 'top center';
+            }
+        }
+
+        // Apply zoom after diagram is rendered
+        setTimeout(() => {
+            applyZoom();
+        }, 1000);
+    </script>
+</body>
+</html>

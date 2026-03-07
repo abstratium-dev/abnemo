@@ -17,7 +17,22 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
-from flask import Flask, request, jsonify, send_from_directory, redirect, g
+from flask import Flask, request, jsonify, send_from_directory, redirect, g, Response
+
+# Import iptables visualizer
+try:
+    from iptables_visualizer import get_iptables_output, IptablesParser, MermaidGenerator, generate_html_visualization
+    IPTABLES_AVAILABLE = True
+except ImportError:
+    IPTABLES_AVAILABLE = False
+
+# Import fail2ban visualizer
+try:
+    from fail2ban_visualizer import get_fail2ban_output, Fail2banParser, Fail2banMermaidGenerator
+    from fail2ban_visualizer import generate_html_visualization as generate_fail2ban_html
+    FAIL2BAN_AVAILABLE = True
+except ImportError:
+    FAIL2BAN_AVAILABLE = False
 
 
 def parse_log_timestamp(timestamp_str):
@@ -497,6 +512,16 @@ def create_app(log_dir):
         """Serve index.html"""
         return send_from_directory('web_static', 'index.html')
     
+    @app.route('/iptables')
+    def iptables_page():
+        """Serve iptables visualizer page"""
+        return send_from_directory('web_static', 'iptables_page.html')
+    
+    @app.route('/fail2ban')
+    def fail2ban_page():
+        """Serve fail2ban visualizer page"""
+        return send_from_directory('web_static', 'fail2ban_page.html')
+    
     @app.route('/<path:path>')
     def static_files(path):
         """Serve static files"""
@@ -660,6 +685,194 @@ def create_app(log_dir):
         session['user'] = _extract_user(tokens)
 
         return redirect('/')
+
+    @app.route('/api/iptables/visualize')
+    def api_iptables_visualize():
+        """API endpoint to get iptables Mermaid diagram code
+        
+        Query parameters:
+            show_all: If 'true', shows all rules instead of just the first 5 of each type
+        
+        Returns JSON with mermaid_code field
+        """
+        auth_error = _ensure_authenticated_response()
+        if auth_error:
+            return auth_error
+        
+        if not IPTABLES_AVAILABLE:
+            return jsonify({
+                'error': 'iptables visualizer module not available',
+                'details': 'Could not import iptables_visualizer module'
+            }), 500
+        
+        try:
+            # Check if user wants to see all rules
+            show_all = request.args.get('show_all', 'false').lower() == 'true'
+            
+            # Get iptables output
+            iptables_output = get_iptables_output()
+            
+            # Parse the output
+            parser = IptablesParser()
+            chains = parser.parse_output(iptables_output)
+            
+            # Generate Mermaid diagram
+            generator = MermaidGenerator(chains)
+            # If show_all is True, set max_rules_per_type to 0 (unlimited)
+            # Otherwise use default of 5
+            max_rules = 0 if show_all else 5
+            mermaid_code = generator.generate(simplified=True, max_rules_per_type=max_rules)
+            
+            # Return JSON with Mermaid code
+            return jsonify({'mermaid_code': mermaid_code})
+            
+        except RuntimeError as e:
+            return jsonify({
+                'error': 'Failed to get iptables data',
+                'details': str(e)
+            }), 500
+        except Exception as e:
+            logger.error(f'Error generating iptables visualization: {e}', exc_info=True)
+            return jsonify({
+                'error': 'Failed to generate visualization',
+                'details': str(e)
+            }), 500
+
+    @app.route('/api/iptables/visualize/custom', methods=['POST'])
+    def api_iptables_visualize_custom():
+        """API endpoint to visualize custom iptables rules from user input
+        
+        POST body should contain:
+            config: The iptables -L -v -n output as text
+            show_all: Optional boolean to show all rules
+        """
+        auth_error = _ensure_authenticated_response()
+        if auth_error:
+            return auth_error
+        
+        if not IPTABLES_AVAILABLE:
+            return jsonify({
+                'error': 'iptables visualizer module not available',
+                'details': 'Could not import iptables_visualizer module'
+            }), 500
+        
+        try:
+            data = request.get_json()
+            if not data or 'config' not in data:
+                return jsonify({
+                    'error': 'Missing config in request body',
+                    'details': 'POST body must contain "config" field with iptables output'
+                }), 400
+            
+            iptables_output = data['config']
+            show_all = data.get('show_all', False)
+            
+            # Parse the output
+            parser = IptablesParser()
+            chains = parser.parse_output(iptables_output)
+            
+            # Generate Mermaid diagram
+            generator = MermaidGenerator(chains)
+            max_rules = 0 if show_all else 5
+            mermaid_code = generator.generate(simplified=True, max_rules_per_type=max_rules)
+            
+            # Return JSON with Mermaid code
+            return jsonify({'mermaid_code': mermaid_code})
+            
+        except Exception as e:
+            logger.error(f'Error generating custom iptables visualization: {e}', exc_info=True)
+            return jsonify({
+                'error': 'Failed to generate visualization',
+                'details': str(e)
+            }), 500
+
+    @app.route('/api/fail2ban/visualize')
+    def api_fail2ban_visualize():
+        """API endpoint to get fail2ban Mermaid diagram code
+        
+        Returns JSON with mermaid_code field
+        """
+        auth_error = _ensure_authenticated_response()
+        if auth_error:
+            return auth_error
+        
+        if not FAIL2BAN_AVAILABLE:
+            return jsonify({
+                'error': 'fail2ban visualizer module not available',
+                'details': 'Could not import fail2ban_visualizer module'
+            }), 500
+        
+        try:
+            # Get fail2ban output
+            fail2ban_output = get_fail2ban_output()
+            
+            # Parse the output
+            parser = Fail2banParser()
+            data = parser.parse_output(fail2ban_output)
+            
+            # Generate Mermaid diagram
+            generator = Fail2banMermaidGenerator(data)
+            mermaid_code = generator.generate(simplified=True)
+            
+            # Return JSON with Mermaid code
+            return jsonify({'mermaid_code': mermaid_code})
+            
+        except RuntimeError as e:
+            return jsonify({
+                'error': 'Failed to get fail2ban data',
+                'details': str(e)
+            }), 500
+        except Exception as e:
+            logger.error(f'Error generating fail2ban visualization: {e}', exc_info=True)
+            return jsonify({
+                'error': 'Failed to generate visualization',
+                'details': str(e)
+            }), 500
+
+    @app.route('/api/fail2ban/visualize/custom', methods=['POST'])
+    def api_fail2ban_visualize_custom():
+        """API endpoint to visualize custom fail2ban config from user input
+        
+        POST body should contain:
+            config: The fail2ban-client --dp output as text
+        """
+        auth_error = _ensure_authenticated_response()
+        if auth_error:
+            return auth_error
+        
+        if not FAIL2BAN_AVAILABLE:
+            return jsonify({
+                'error': 'fail2ban visualizer module not available',
+                'details': 'Could not import fail2ban_visualizer module'
+            }), 500
+        
+        try:
+            data = request.get_json()
+            if not data or 'config' not in data:
+                return jsonify({
+                    'error': 'Missing config in request body',
+                    'details': 'POST body must contain "config" field with fail2ban --dp output'
+                }), 400
+            
+            fail2ban_output = data['config']
+            
+            # Parse the output
+            parser = Fail2banParser()
+            parsed_data = parser.parse_output(fail2ban_output)
+            
+            # Generate Mermaid diagram
+            generator = Fail2banMermaidGenerator(parsed_data)
+            mermaid_code = generator.generate(simplified=True)
+            
+            # Return JSON with Mermaid code
+            return jsonify({'mermaid_code': mermaid_code})
+            
+        except Exception as e:
+            logger.error(f'Error generating custom fail2ban visualization: {e}', exc_info=True)
+            return jsonify({
+                'error': 'Failed to generate visualization',
+                'details': str(e)
+            }), 500
 
     return app
 

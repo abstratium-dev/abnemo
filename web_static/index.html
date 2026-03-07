@@ -42,6 +42,22 @@
             font-size: 1.1em;
         }
         
+        .nav-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .nav-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
         .controls {
             background: white;
             border-radius: 12px;
@@ -390,6 +406,20 @@
         <header>
             <h1>🌐 Abnemo</h1>
             <p class="subtitle">Network Traffic Monitor & Analyzer</p>
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+                <h3 style="color: #667eea; margin-bottom: 12px; font-size: 1.1em;">🛠️ Configuration Visualizers</h3>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <a href="/iptables" class="nav-button">
+                        🔥 iptables Firewall Rules
+                    </a>
+                    <a href="/fail2ban" class="nav-button">
+                        🛡️ fail2ban Protection
+                    </a>
+                </div>
+                <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
+                    Visualize local configs or paste remote server configurations for debugging
+                </p>
+            </div>
         </header>
 
         <div class="auth-card" id="auth-card">
