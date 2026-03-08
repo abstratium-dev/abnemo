@@ -1,0 +1,28 @@
+=== DOCKER ENRICHMENT DATA ===
+
+# Docker Containers
+# Format: IP|ContainerName|NetworkName|Gateway
+172.19.0.5|maxant-homeauto|maxant|172.19.0.1
+172.19.0.7|maxant-victoriametrics|maxant|172.19.0.1
+172.19.0.23|maxant-sre|maxant|172.19.0.1
+172.19.0.27|maxant-wiki|maxant|172.19.0.1
+172.19.0.28|maxant-test-sre|maxant|172.19.0.1
+172.19.0.18|maxant-oldblogredirector|maxant|172.19.0.1
+172.19.0.16|maxant-openspaceplanner|maxant|172.19.0.1
+172.19.0.15|maxant-collectdexporter|maxant|172.19.0.1
+172.19.0.11|maxant-reposilite|maxant|172.19.0.1
+172.19.0.4|maxant-jaegerallinone|maxant|172.19.0.1
+172.19.0.6|maxant-victorialogs|maxant|172.19.0.1
+172.18.0.10|serverless-prometheus|serverless|172.18.0.1
+172.18.0.6|serverless-grafana|serverless|172.18.0.1
+172.18.0.2|serverless-mysql-metrics-exporter|serverless|172.18.0.1
+172.18.0.4|maxant-victoriametrics|serverless|172.18.0.1
+
+# Docker Networks
+# Format: NetworkName|Subnet|Gateway|Driver|InterfaceID
+maxant|172.19.0.0/16|172.19.0.1|bridge|134df6656aef
+serverless|172.18.0.0/16|172.18.0.1|bridge|fe41f7b43fad
+bridge|173.18.0.32/27|173.18.0.33|bridge|406a58ade809
+
+=== END DOCKER ENRICHMENT DATA ===
+

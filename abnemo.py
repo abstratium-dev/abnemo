@@ -226,6 +226,49 @@ def list_logs_command(args):
 
 
 
+def iptables_tree_command(args):
+    """Handle the iptables-tree subcommand - visualize iptables as tree"""
+    from src.iptables import load_iptables_config, IptablesTreeFormatter
+    
+    # Load configuration
+    try:
+        config = load_iptables_config(
+            enrichment_file=args.enrichment,
+            iptables_file=args.file,
+            table=args.table,
+            use_sudo=not args.file
+        )
+    except Exception as e:
+        print(f"[!] Error loading iptables configuration: {e}")
+        sys.exit(1)
+    
+    # Create formatter
+    formatter = IptablesTreeFormatter(
+        show_docker_only=args.docker_only,
+        show_rules=not args.no_rules
+    )
+    
+    # Format and print
+    if args.chain:
+        # Show specific chain
+        table = config.get_table(args.table)
+        if not table:
+            print(f"[!] Table '{args.table}' not found")
+            sys.exit(1)
+        
+        chain = table.get_chain(args.chain)
+        if not chain:
+            print(f"[!] Chain '{args.chain}' not found in table '{args.table}'")
+            sys.exit(1)
+        
+        output = formatter.format_chain(chain, table)
+    else:
+        # Show full config
+        output = formatter.format_config(config)
+    
+    print(output)
+
+
 def web_command(args):
     """Handle the web subcommand - start standalone web server"""
     from web_server import start_web_server
@@ -263,6 +306,15 @@ Examples:
 
   # List all captured logs
   python3 abnemo.py list-logs
+
+  # Visualize iptables configuration as tree
+  sudo python3 abnemo.py iptables-tree
+
+  # Show only Docker-related chains and rules
+  sudo python3 abnemo.py iptables-tree --docker-only
+
+  # Show specific chain
+  sudo python3 abnemo.py iptables-tree --chain DOCKER --max-rules 10
         """
     )
     
@@ -316,6 +368,15 @@ Examples:
     web_parser.add_argument('--port', type=int, default=5000, help='Port to run web server on (default: 5000)')
     web_parser.add_argument('--debug', action='store_true', help='Run Flask in debug mode')
     
+    # IPTables tree visualization command
+    tree_parser = subparsers.add_parser('iptables-tree', help='Visualize iptables configuration as tree')
+    tree_parser.add_argument('-f', '--file', help='Path to iptables output file (if not provided, runs iptables command)')
+    tree_parser.add_argument('-e', '--enrichment', help='Path to Docker enrichment data file')
+    tree_parser.add_argument('-t', '--table', default='filter', help='Table to visualize (default: filter)')
+    tree_parser.add_argument('-d', '--docker-only', action='store_true', help='Show only Docker-related chains and rules')
+    tree_parser.add_argument('-n', '--no-rules', action='store_true', help='Hide rules, show only chains')
+    tree_parser.add_argument('-c', '--chain', help='Show only a specific chain')
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -331,6 +392,8 @@ Examples:
         list_logs_command(args)
     elif args.command == 'web':
         web_command(args)
+    elif args.command == 'iptables-tree':
+        iptables_tree_command(args)
 
 
 if __name__ == '__main__':

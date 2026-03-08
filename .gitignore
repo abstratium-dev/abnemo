@@ -10,3 +10,9 @@ traffic_logs/
 *.db
 .env
 isp_cache.json
+
+.coverage
+coverage.xml
+
+
+

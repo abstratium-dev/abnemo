@@ -206,6 +206,9 @@ class DockerEnricher:
         if not interface or interface == '*':
             return False, None
         
+        # Strip negation prefix if present
+        clean_interface = interface.lstrip('!')
+        
         # Common Docker interface patterns
         docker_patterns = [
             r'^docker\d+$',  # docker0, docker1, etc.
@@ -214,9 +217,9 @@ class DockerEnricher:
         ]
         
         for pattern in docker_patterns:
-            if re.match(pattern, interface):
+            if re.match(pattern, clean_interface):
                 # Try to find the network name
-                network_name = self._get_network_name_by_interface(interface)
+                network_name = self._get_network_name_by_interface(clean_interface)
                 return True, network_name
         
         return False, None
@@ -259,7 +262,8 @@ class DockerEnricher:
             container = self.containers[ip_clean]
             enrichment['type'] = 'container'
             enrichment['container_name'] = container['name']
-            enrichment['container_id'] = container['id']
+            if 'id' in container:
+                enrichment['container_id'] = container['id']
             enrichment['network'] = container['network']
             enrichment['label'] = f"🐳 {container['name']}"
             return enrichment
