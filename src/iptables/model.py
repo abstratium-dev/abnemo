@@ -133,20 +133,20 @@ class Rule:
         # Handle in_interface - check for negation prefix
         in_iface = self.in_interface.original
         if in_iface not in ['*', 'any']:
-            if self.in_interface.is_docker_related and self.in_interface.docker_name:
-                # Use docker name, preserve negation prefix if present
+            if self.in_interface.is_docker_related:
+                # Use docker label, preserve negation prefix if present
                 prefix = "!" if in_iface.startswith("!") else ""
-                parts.append(f"in:{prefix}{self.in_interface.docker_name}")
+                parts.append(f"in:{prefix}{self.in_interface.label}")
             else:
                 parts.append(f"in:{in_iface}")
         
         # Handle out_interface - check for negation prefix
         out_iface = self.out_interface.original
         if out_iface not in ['*', 'any']:
-            if self.out_interface.is_docker_related and self.out_interface.docker_name:
-                # Use docker name, preserve negation prefix if present
+            if self.out_interface.is_docker_related:
+                # Use docker label, preserve negation prefix if present
                 prefix = "!" if out_iface.startswith("!") else ""
-                parts.append(f"out:{prefix}{self.out_interface.docker_name}")
+                parts.append(f"out:{prefix}{self.out_interface.label}")
             else:
                 parts.append(f"out:{out_iface}")
         

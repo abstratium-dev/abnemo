@@ -19,17 +19,17 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from flask import Flask, request, jsonify, send_from_directory, redirect, g, Response
 
-# Import iptables visualizer
+# Import iptables tree formatter
 try:
-    from iptables_visualizer import get_iptables_output, IptablesParser, MermaidGenerator, generate_html_visualization
+    from src.iptables import load_iptables_config, IptablesTreeFormatter
     IPTABLES_AVAILABLE = True
 except ImportError:
     IPTABLES_AVAILABLE = False
 
 # Import fail2ban visualizer
 try:
-    from fail2ban_visualizer import get_fail2ban_output, Fail2banParser, Fail2banMermaidGenerator
-    from fail2ban_visualizer import generate_html_visualization as generate_fail2ban_html
+    from src.fail2ban_visualizer import get_fail2ban_output, Fail2banParser, Fail2banMermaidGenerator
+    from src.fail2ban_visualizer import generate_html_visualization as generate_fail2ban_html
     FAIL2BAN_AVAILABLE = True
 except ImportError:
     FAIL2BAN_AVAILABLE = False
@@ -383,7 +383,10 @@ def _user_has_required_group(session, required_groups):
 
 def create_app(log_dir):
     """Create and configure the Flask application."""
-    app = Flask(__name__, static_folder='web_static')
+    # Get the project root directory (parent of src/)
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    static_folder = os.path.join(project_root, 'web_static')
+    app = Flask(__name__, static_folder=static_folder)
 
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
@@ -510,22 +513,78 @@ def create_app(log_dir):
     @app.route('/')
     def index():
         """Serve index.html"""
-        return send_from_directory('web_static', 'index.html')
+        return send_from_directory(static_folder, 'index.html')
     
     @app.route('/iptables')
     def iptables_page():
-        """Serve iptables visualizer page"""
-        return send_from_directory('web_static', 'iptables_page.html')
+        """Display iptables configuration as monospaced text"""
+        auth_error = _ensure_authenticated_response()
+        if auth_error:
+            return auth_error
+        
+        if not IPTABLES_AVAILABLE:
+            return Response(
+                '<html><body><h1>Error</h1><p>iptables module not available</p></body></html>',
+                mimetype='text/html'
+            ), 500
+        
+        try:
+            # Load iptables configuration
+            config = load_iptables_config()
+            
+            # Format as tree
+            formatter = IptablesTreeFormatter(
+                show_docker_only=False,
+                show_rules=True,
+                inline_chains=True,
+                compress_same_target=True
+            )
+            tree_text = formatter.format_config(config)
+            
+            # Return as HTML with monospaced text
+            html = f'''<!DOCTYPE html>
+<html>
+<head>
+    <title>iptables Configuration</title>
+    <style>
+        body {{
+            margin: 0;
+            padding: 20px;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }}
+        pre {{
+            margin: 0;
+            white-space: pre;
+            overflow-x: auto;
+        }}
+    </style>
+</head>
+<body>
+    <pre>{tree_text}</pre>
+</body>
+</html>'''
+            return Response(html, mimetype='text/html')
+            
+        except Exception as e:
+            logger.error(f'Error loading iptables configuration: {e}', exc_info=True)
+            return Response(
+                f'<html><body><h1>Error</h1><p>Failed to load iptables: {str(e)}</p></body></html>',
+                mimetype='text/html'
+            ), 500
     
     @app.route('/fail2ban')
     def fail2ban_page():
         """Serve fail2ban visualizer page"""
-        return send_from_directory('web_static', 'fail2ban_page.html')
+        return send_from_directory(static_folder, 'fail2ban_page.html')
     
     @app.route('/<path:path>')
     def static_files(path):
         """Serve static files"""
-        return send_from_directory('web_static', path)
+        return send_from_directory(static_folder, path)
     
     @app.route('/api/process/<pid>')
     def api_process(pid):
@@ -686,14 +745,15 @@ def create_app(log_dir):
 
         return redirect('/')
 
-    @app.route('/api/iptables/visualize')
-    def api_iptables_visualize():
-        """API endpoint to get iptables Mermaid diagram code
+    @app.route('/api/iptables/text')
+    def api_iptables_text():
+        """API endpoint to get iptables configuration as text tree
         
         Query parameters:
-            show_all: If 'true', shows all rules instead of just the first 5 of each type
+            docker_only: If 'true', shows only Docker-related chains and rules
+            no_rules: If 'true', hides rules and shows only chains
         
-        Returns JSON with mermaid_code field
+        Returns JSON with text field containing the tree representation
         """
         auth_error = _ensure_authenticated_response()
         if auth_error:
@@ -701,90 +761,37 @@ def create_app(log_dir):
         
         if not IPTABLES_AVAILABLE:
             return jsonify({
-                'error': 'iptables visualizer module not available',
-                'details': 'Could not import iptables_visualizer module'
+                'error': 'iptables module not available',
+                'details': 'Could not import iptables module'
             }), 500
         
         try:
-            # Check if user wants to see all rules
-            show_all = request.args.get('show_all', 'false').lower() == 'true'
+            # Parse query parameters
+            docker_only = request.args.get('docker_only', 'false').lower() == 'true'
+            no_rules = request.args.get('no_rules', 'false').lower() == 'true'
             
-            # Get iptables output
-            iptables_output = get_iptables_output()
+            # Load iptables configuration
+            config = load_iptables_config()
             
-            # Parse the output
-            parser = IptablesParser()
-            chains = parser.parse_output(iptables_output)
+            # Format as tree
+            formatter = IptablesTreeFormatter(
+                show_docker_only=docker_only,
+                show_rules=not no_rules,
+                inline_chains=True,
+                compress_same_target=True
+            )
+            tree_text = formatter.format_config(config)
             
-            # Generate Mermaid diagram
-            generator = MermaidGenerator(chains)
-            # If show_all is True, set max_rules_per_type to 0 (unlimited)
-            # Otherwise use default of 5
-            max_rules = 0 if show_all else 5
-            mermaid_code = generator.generate(simplified=True, max_rules_per_type=max_rules)
+            # Return JSON with text
+            return jsonify({'text': tree_text})
             
-            # Return JSON with Mermaid code
-            return jsonify({'mermaid_code': mermaid_code})
-            
-        except RuntimeError as e:
-            return jsonify({
-                'error': 'Failed to get iptables data',
-                'details': str(e)
-            }), 500
         except Exception as e:
-            logger.error(f'Error generating iptables visualization: {e}', exc_info=True)
+            logger.error(f'Error generating iptables text: {e}', exc_info=True)
             return jsonify({
-                'error': 'Failed to generate visualization',
+                'error': 'Failed to generate text representation',
                 'details': str(e)
             }), 500
 
-    @app.route('/api/iptables/visualize/custom', methods=['POST'])
-    def api_iptables_visualize_custom():
-        """API endpoint to visualize custom iptables rules from user input
-        
-        POST body should contain:
-            config: The iptables -L -v -n output as text
-            show_all: Optional boolean to show all rules
-        """
-        auth_error = _ensure_authenticated_response()
-        if auth_error:
-            return auth_error
-        
-        if not IPTABLES_AVAILABLE:
-            return jsonify({
-                'error': 'iptables visualizer module not available',
-                'details': 'Could not import iptables_visualizer module'
-            }), 500
-        
-        try:
-            data = request.get_json()
-            if not data or 'config' not in data:
-                return jsonify({
-                    'error': 'Missing config in request body',
-                    'details': 'POST body must contain "config" field with iptables output'
-                }), 400
-            
-            iptables_output = data['config']
-            show_all = data.get('show_all', False)
-            
-            # Parse the output
-            parser = IptablesParser()
-            chains = parser.parse_output(iptables_output)
-            
-            # Generate Mermaid diagram
-            generator = MermaidGenerator(chains)
-            max_rules = 0 if show_all else 5
-            mermaid_code = generator.generate(simplified=True, max_rules_per_type=max_rules)
-            
-            # Return JSON with Mermaid code
-            return jsonify({'mermaid_code': mermaid_code})
-            
-        except Exception as e:
-            logger.error(f'Error generating custom iptables visualization: {e}', exc_info=True)
-            return jsonify({
-                'error': 'Failed to generate visualization',
-                'details': str(e)
-            }), 500
 
     @app.route('/api/fail2ban/visualize')
     def api_fail2ban_visualize():
@@ -882,7 +889,9 @@ def start_web_server(log_dir, port):
     app = create_app(log_dir)
 
     # Create web_static directory if it doesn't exist
-    os.makedirs('web_static', exist_ok=True)
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    static_folder = os.path.join(project_root, 'web_static')
+    os.makedirs(static_folder, exist_ok=True)
 
     # Run the Flask app
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)

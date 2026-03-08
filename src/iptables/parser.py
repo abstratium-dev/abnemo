@@ -12,7 +12,7 @@ import os
 # Add parent directory to path to import docker_enrichment
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from docker_enrichment import DockerEnricher
+from src.docker_enrichment import DockerEnricher
 from src.iptables.model import (
     IptablesConfig, Table, Chain, Rule, 
     DockerEnrichedField, Policy

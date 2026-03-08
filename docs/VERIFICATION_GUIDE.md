@@ -176,7 +176,7 @@ veth1234567
 
 **Which one should Abnemo monitor?**
 - If you don't specify `--interface`, Abnemo monitors **all** interfaces
-- To monitor a specific one: `sudo python3 abnemo.py monitor --interface eth0`
+- To monitor a specific one: `sudo python3 src/abnemo.py monitor --interface eth0`
 
 ---
 
@@ -323,7 +323,7 @@ echo "Abnemo captured $percentage% of system traffic"
 1. **Wrong traffic direction mode**
    ```bash
    # Solution: Use bidirectional mode
-   sudo python3 abnemo.py monitor --web --traffic-direction bidirectional
+   sudo python3 src/abnemo.py monitor --web --traffic-direction bidirectional
    ```
 
 2. **Abnemo only ran for a short time**
@@ -346,7 +346,7 @@ echo "Abnemo captured $percentage% of system traffic"
    ip route show default
    
    # Specify it explicitly
-   sudo python3 abnemo.py monitor --interface eth0 --web
+   sudo python3 src/abnemo.py monitor --interface eth0 --web
    ```
 
 ### Issue 2: No Traffic Captured at All
@@ -360,7 +360,7 @@ echo "Abnemo captured $percentage% of system traffic"
 1. **Check permissions**
    ```bash
    # Must run as root
-   sudo python3 abnemo.py monitor --web
+   sudo python3 src/abnemo.py monitor --web
    ```
 
 2. **Check if interface is up**
@@ -421,7 +421,7 @@ jq -s 'map(.traffic_by_ip | to_entries | map(.value.packets) | add // 0) | add' 
 
 ```bash
 # Terminal 1: Run Abnemo
-sudo python3 abnemo.py monitor --web --traffic-direction bidirectional
+sudo python3 src/abnemo.py monitor --web --traffic-direction bidirectional
 
 # Terminal 2: Watch system stats
 watch -n 1 'cat /proc/net/dev | grep -E "eth0|wlan0"'

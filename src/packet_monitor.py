@@ -13,7 +13,7 @@ import threading
 import time
 import json
 import os
-from isp_lookup import ISPLookup
+from src.isp_lookup import ISPLookup
 
 
 class PacketMonitor:
@@ -57,7 +57,7 @@ class PacketMonitor:
         self.enable_process_tracking = enable_process_tracking
         self.process_tracker = None
         if enable_process_tracking:
-            from process_tracker import ProcessTracker
+            from src.process_tracker import ProcessTracker
             self.process_tracker = ProcessTracker()
         
         # Log rotation settings

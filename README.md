@@ -52,23 +52,23 @@ export IPAPI_KEY=your_api_key_here
 **Step 1: Monitor Traffic**
 ```bash
 # Monitor for 60 seconds with summaries every 10 seconds
-./abnemo.sh monitor --duration 60 --summary-interval 10
+./scripts/abnemo.sh monitor --duration 60 --summary-interval 10
 
 # Or monitor indefinitely (Ctrl+C to stop)
-./abnemo.sh monitor --summary-interval 10
+./scripts/abnemo.sh monitor --summary-interval 10
 
 # Monitor with live web interface (access at http://localhost:5000)
-./abnemo.sh monitor --summary-interval 10 --web
+./scripts/abnemo.sh monitor --summary-interval 10 --web
 ```
 
 **Step 2: View Captured Logs**
 ```bash
-./abnemo.sh list-logs
+./scripts/abnemo.sh list-logs
 ```
 
 **Step 3: Generate Block Rules (Interactive)**
 ```bash
-./abnemo.sh generate --log traffic_logs/traffic_log_XXXXXX.json --interactive
+./scripts/abnemo.sh generate --log traffic_logs/traffic_log_XXXXXX.json --interactive
 ```
 
 Select the IPs you want to block by entering their numbers (e.g., `1,3,5`) or `all` for all IPs.
@@ -158,7 +158,7 @@ When using `sudo`, the system may use a different Python installation than your 
 
 **Option 1: Use the wrapper script (easiest)**
 ```bash
-./abnemo.sh monitor
+./scripts/abnemo.sh monitor
 ```
 
 **Option 2: Install packages system-wide**
@@ -168,7 +168,7 @@ sudo apt install python3-scapy python3-dnspython python3-tabulate
 
 **Option 3: Specify full Python path (if using virtual environment)**
 ```bash
-sudo /path/to/venv/bin/python3 abnemo.py monitor
+sudo /path/to/venv/bin/python3 src/abnemo.py monitor
 ```
 
 ## Usage
@@ -179,34 +179,34 @@ Capture outgoing network traffic (requires root privileges):
 
 ```bash
 # Using wrapper script (recommended)
-./abnemo.sh monitor
+./scripts/abnemo.sh monitor
 
 # Or with full Python path
-sudo /home/ant/miniconda3/bin/python3 abnemo.py monitor
+sudo /home/ant/miniconda3/bin/python3 src/abnemo.py monitor
 
 # Monitor for 60 seconds
-./abnemo.sh monitor --duration 60
+./scripts/abnemo.sh monitor --duration 60
 
 # Monitor with periodic summaries every 10 seconds
-./abnemo.sh monitor --summary-interval 10
+./scripts/abnemo.sh monitor --summary-interval 10
 
 # Monitor specific network interface with summaries
-./abnemo.sh monitor --interface eth0 --summary-interval 10
+./scripts/abnemo.sh monitor --interface eth0 --summary-interval 10
 
 # Show top 50 destinations in final summary
-./abnemo.sh monitor --top 50
+./scripts/abnemo.sh monitor --top 50
 
 # Continuous monitoring with automatic log rotation
-./abnemo.sh monitor --summary-interval 10 --continuous-log-interval 60
+./scripts/abnemo.sh monitor --summary-interval 10 --continuous-log-interval 60
 
 # Custom log retention (keep 7 days, max 50MB)
-./abnemo.sh monitor --log-retention-days 7 --log-max-size-mb 50
+./scripts/abnemo.sh monitor --log-retention-days 7 --log-max-size-mb 50
 
 # Enable process tracking (identify which program sent packets)
-./abnemo.sh monitor --enable-process-tracking --summary-interval 10
+./scripts/abnemo.sh monitor --enable-process-tracking --summary-interval 10
 
 # Monitor with live web interface for real-time visualization
-./abnemo.sh monitor --summary-interval 10 --web --web-port 5000
+./scripts/abnemo.sh monitor --summary-interval 10 --web --web-port 5000
 ```
 
 #### Live Web Interface
@@ -215,7 +215,7 @@ Monitor traffic in real-time with a beautiful web dashboard:
 
 ```bash
 # Start monitoring with web interface
-./abnemo.sh monitor --web --summary-interval 10
+./scripts/abnemo.sh monitor --web --summary-interval 10
 
 # Access the web interface at http://localhost:5000
 # The web interface shows:
@@ -227,7 +227,7 @@ Monitor traffic in real-time with a beautiful web dashboard:
 # - Domain and ISP information
 
 # Customize the web server port
-./abnemo.sh monitor --web --web-port 8080
+./scripts/abnemo.sh monitor --web --web-port 8080
 ```
 
 **How it works:**
@@ -276,13 +276,13 @@ When running without `--duration`, Abnemo operates in **continuous mode**:
 **Example continuous monitoring:**
 ```bash
 # Run indefinitely, save logs every minute
-./abnemo.sh monitor --continuous-log-interval 60
+./scripts/abnemo.sh monitor --continuous-log-interval 60
 
 # Run with custom retention
-./abnemo.sh monitor --log-retention-days 7 --log-max-size-mb 50
+./scripts/abnemo.sh monitor --log-retention-days 7 --log-max-size-mb 50
 
 # Disable continuous logging (only save on exit)
-./abnemo.sh monitor --continuous-log-interval 0
+./scripts/abnemo.sh monitor --continuous-log-interval 0
 ```
 
 #### Process Tracking (Optional)
@@ -291,7 +291,7 @@ Abnemo can identify **which process or Docker container** sent each packet. This
 
 **Enable with:**
 ```bash
-./abnemo.sh monitor --enable-process-tracking --summary-interval 10
+./scripts/abnemo.sh monitor --enable-process-tracking --summary-interval 10
 ```
 
 **What it shows:**
@@ -377,7 +377,7 @@ sudo dnf install python3-bcc
 conda deactivate
 
 # Verify installation
-./build_ebpf.sh
+./scripts/build_ebpf.sh
 ```
 
 **Why BCC requires system packages:**
@@ -390,10 +390,10 @@ conda deactivate
 
 ```bash
 # eBPF mode (recommended for security monitoring)
-sudo ./abnemo.sh monitor --ebpf --summary-interval 10
+sudo ./scripts/abnemo.sh monitor --ebpf --summary-interval 10
 
 # Or directly
-sudo python3 abnemo.py monitor --ebpf --summary-interval 10 --top 20
+sudo python3 src/abnemo.py monitor --ebpf --summary-interval 10 --top 20
 ```
 
 ### How It Works
@@ -423,10 +423,10 @@ sudo python3 abnemo.py monitor --ebpf --summary-interval 10 --top 20
 
 ```bash
 # Check requirements and compile eBPF program
-./build_ebpf.sh
+./scripts/build_ebpf.sh
 
 # Test eBPF mode
-sudo python3 abnemo.py monitor --ebpf --duration 30 --summary-interval 10
+sudo python3 src/abnemo.py monitor --ebpf --duration 30 --summary-interval 10
 
 # In another terminal, test with short-lived process
 curl https://microsoft.com
@@ -439,14 +439,14 @@ curl https://google.com
 
 **Standard mode:**
 ```bash
-sudo ./abnemo.sh monitor --enable-process-tracking --summary-interval 10
+sudo ./scripts/abnemo.sh monitor --enable-process-tracking --summary-interval 10
 # Run: curl https://microsoft.com
 # Result: ❌ Might miss (race condition)
 ```
 
 **eBPF mode:**
 ```bash
-sudo ./abnemo.sh monitor --ebpf --summary-interval 10
+sudo ./scripts/abnemo.sh monitor --ebpf --summary-interval 10
 # Run: curl https://microsoft.com
 # Result: ✅ Always catches (no race condition)
 ```
@@ -466,7 +466,7 @@ uname -r  # Check version (need 4.x+)
 **Error: "Permission denied"**
 ```bash
 # eBPF requires root
-sudo python3 abnemo.py monitor --ebpf
+sudo python3 src/abnemo.py monitor --ebpf
 ```
 
 See `EBPF_ENHANCEMENT.md` for detailed architecture and implementation notes.
@@ -479,7 +479,7 @@ The live dashboard can require sign-in via Abstrauth using the **Backend-For-Fro
 
 ### Required Environment Variables
 
-Set these before starting `./abnemo.sh monitor --web` (or when running `web_server.py`). Authentication gates activate automatically once all required fields are present.
+Set these before starting `./scripts/abnemo.sh monitor --web` (or when running `web_server.py`). Authentication gates activate automatically once all required fields are present.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -517,7 +517,7 @@ export ABSTRAUTH_COOKIE_SECURE=true   # strongly recommended when using HTTPS
 Then launch:
 
 ```bash
-./abnemo.sh monitor --web --web-port 8443
+./scripts/abnemo.sh monitor --web --web-port 8443
 ```
 
 ### User Flow (BFF)
@@ -536,16 +536,16 @@ If the Abstrauth variables are not set, the server stays open (no authentication
 
 ```bash
 # Monitor specific interface with periodic summaries
-./abnemo.sh monitor --interface eth0 --duration 120 --summary-interval 10
+./scripts/abnemo.sh monitor --interface eth0 --duration 120 --summary-interval 10
 
 # Auto-block IPs with >10MB traffic
-./abnemo.sh generate --log traffic_logs/traffic_log_XXXXXX.json --min-bytes 10485760
+./scripts/abnemo.sh generate --log traffic_logs/traffic_log_XXXXXX.json --min-bytes 10485760
 
 # Block specific domains
-./abnemo.sh generate --log traffic_logs/traffic_log_XXXXXX.json --domains "ads.com,tracker.net"
+./scripts/abnemo.sh generate --log traffic_logs/traffic_log_XXXXXX.json --domains "ads.com,tracker.net"
 
 # Block specific IPs
-./abnemo.sh generate --log traffic_logs/traffic_log_XXXXXX.json --ips "1.2.3.4,5.6.7.8"
+./scripts/abnemo.sh generate --log traffic_logs/traffic_log_XXXXXX.json --ips "1.2.3.4,5.6.7.8"
 ```
 
 ### 2. List Captured Logs
@@ -553,7 +553,7 @@ If the Abstrauth variables are not set, the server stays open (no authentication
 View all previously captured traffic logs:
 
 ```bash
-python3 abnemo.py list-logs
+python3 src/abnemo.py list-logs
 ```
 
 ### 3. Generate IPTables Rules
@@ -565,7 +565,7 @@ Create iptables rules to block specific IPs based on captured traffic:
 Select IPs manually from a captured log:
 
 ```bash
-python3 abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --interactive
+python3 src/abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --interactive
 ```
 
 This will:
@@ -579,33 +579,33 @@ Block IPs that exceed certain thresholds:
 
 ```bash
 # Block IPs that transferred more than 10MB
-python3 abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --min-bytes 10485760
+python3 src/abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --min-bytes 10485760
 
 # Block IPs with more than 1000 packets
-python3 abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --min-packets 1000
+python3 src/abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --min-packets 1000
 ```
 
 #### Block Specific IPs or Domains
 
 ```bash
 # Block specific IP addresses
-python3 abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --ips "192.168.1.100,10.0.0.50"
+python3 src/abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --ips "192.168.1.100,10.0.0.50"
 
 # Block all IPs associated with specific domains
-python3 abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --domains "ads.example.com,tracker.com"
+python3 src/abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --domains "ads.example.com,tracker.com"
 ```
 
 #### Advanced Options
 
 ```bash
 # Use REJECT instead of DROP
-python3 abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --interactive --action REJECT
+python3 src/abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --interactive --action REJECT
 
 # Generate iptables-restore format (more efficient for many rules)
-python3 abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --interactive --format restore
+python3 src/abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --interactive --format restore
 
 # Custom output file
-python3 abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --interactive --output my_rules.sh
+python3 src/abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --interactive --output my_rules.sh
 ```
 
 ### 4. Apply IPTables Rules
@@ -731,13 +731,13 @@ To use a pro API key, either:
 
 1. **Command line argument**:
 ```bash
-./abnemo.sh monitor --isp-api-key YOUR_API_KEY
+./scripts/abnemo.sh monitor --isp-api-key YOUR_API_KEY
 ```
 
 2. **Environment variable**:
 ```bash
 export IPAPI_KEY=YOUR_API_KEY
-./abnemo.sh monitor
+./scripts/abnemo.sh monitor
 ```
 
 ### Example Output
@@ -799,7 +799,6 @@ abnemo/
 ├── abnemo.py              # Main CLI interface
 ├── abnemo.sh              # Wrapper script for easy execution
 ├── packet_monitor.py      # Packet capture and monitoring logic
-├── iptables_generator.py  # IPTables rule generation
 ├── isp_lookup.py          # ISP/organization lookup module
 ├── port_mappings.txt      # Port number to description mappings
 ├── requirements.txt       # Python dependencies
@@ -858,7 +857,7 @@ Network Interface → Scapy Sniffer → Packet Filter → Statistics Aggregation
 
 ```bash
 # Run on host (not inside container)
-./abnemo.sh monitor --summary-interval 10
+./scripts/abnemo.sh monitor --summary-interval 10
 ```
 
 **What you'll see:**
@@ -872,7 +871,7 @@ Network Interface → Scapy Sniffer → Packet Filter → Statistics Aggregation
 docker network inspect bridge | grep com.docker.network.bridge.name
 
 # Monitor that interface
-./abnemo.sh monitor --interface docker0
+./scripts/abnemo.sh monitor --interface docker0
 ```
 
 **Limitations:**
@@ -977,7 +976,7 @@ The `generate` command:
 **Solution: Deactivate conda before using eBPF**
 ```bash
 conda deactivate
-./build_ebpf.sh
+./scripts/build_ebpf.sh
 # Note: You'll need to deactivate conda each time you run eBPF mode
 ```
 
@@ -992,14 +991,14 @@ python3 -c "import bcc"          # Test current environment
 
 **Problem**: When running with sudo, Python can't find installed packages.
 
-**Solution**: Use the wrapper script `./abnemo.sh` instead of calling Python directly, or specify the full Python path:
+**Solution**: Use the wrapper script `./scripts/abnemo.sh` instead of calling Python directly, or specify the full Python path:
 
 ```bash
 # Option 1: Use wrapper script (easiest)
-./abnemo.sh monitor
+./scripts/abnemo.sh monitor
 
 # Option 2: Specify full Python path
-sudo /home/ant/miniconda3/bin/python3 abnemo.py monitor
+sudo /home/ant/miniconda3/bin/python3 src/abnemo.py monitor
 
 # Option 3: Install packages system-wide
 sudo pip3 install -r requirements.txt
@@ -1011,19 +1010,19 @@ sudo pip3 install -r requirements.txt
 
 **Solution**: The wrapper script automatically uses sudo for monitoring. Just run:
 ```bash
-./abnemo.sh monitor
+./scripts/abnemo.sh monitor
 ```
 
 Or run directly with sudo:
 ```bash
-sudo python3 abnemo.py monitor
+sudo python3 src/abnemo.py monitor
 ```
 
 ### No packets captured
 
 **Possible causes**:
 - Ensure there's active network traffic during monitoring
-- Try monitoring a specific interface: `./abnemo.sh monitor --interface eth0`
+- Try monitoring a specific interface: `./scripts/abnemo.sh monitor --interface eth0`
 - Check that you have proper permissions (the script uses sudo)
 - Verify firewall rules aren't blocking packet capture
 
@@ -1033,7 +1032,7 @@ sudo python3 abnemo.py monitor
 ip link show
 
 # Monitor specific interface
-./abnemo.sh monitor --interface wlan0 --duration 30
+./scripts/abnemo.sh monitor --interface wlan0 --duration 30
 ```
 
 ### DNS Lookup Timeouts
@@ -1063,13 +1062,13 @@ ip link show
 
 ```bash
 # Step 1: Monitor traffic for 5 minutes
-sudo python3 abnemo.py monitor --duration 300
+sudo python3 src/abnemo.py monitor --duration 300
 
 # Step 2: Review the log
-python3 abnemo.py list-logs
+python3 src/abnemo.py list-logs
 
 # Step 3: Generate rules interactively
-python3 abnemo.py generate --log traffic_logs/traffic_log_20240301_143022.json --interactive
+python3 src/abnemo.py generate --log traffic_logs/traffic_log_20240301_143022.json --interactive
 
 # Step 4: Apply rules
 sudo bash block_rules.sh
@@ -1079,10 +1078,10 @@ sudo bash block_rules.sh
 
 ```bash
 # Monitor traffic while browsing
-sudo python3 abnemo.py monitor --duration 120
+sudo python3 src/abnemo.py monitor --duration 120
 
 # Block known ad/tracking domains
-python3 abnemo.py generate --log traffic_logs/traffic_log_20240301_143022.json \
+python3 src/abnemo.py generate --log traffic_logs/traffic_log_20240301_143022.json \
   --domains "doubleclick.net,googleadservices.com,facebook.com"
 
 # Apply rules
@@ -1093,14 +1092,14 @@ sudo bash block_rules.sh
 
 ```bash
 # Start monitoring
-sudo python3 abnemo.py monitor &
+sudo python3 src/abnemo.py monitor &
 
 # Run your application
 ./my_application
 
 # Stop monitoring (Ctrl+C)
 # Review and block suspicious IPs
-python3 abnemo.py generate --log traffic_logs/traffic_log_*.json --interactive
+python3 src/abnemo.py generate --log traffic_logs/traffic_log_*.json --interactive
 ```
 
 ## License

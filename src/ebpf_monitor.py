@@ -11,7 +11,7 @@ import subprocess
 import os
 from collections import defaultdict
 from datetime import datetime
-from packet_monitor import PacketMonitor
+from src.packet_monitor import PacketMonitor
 from ebpf.ebpf_loader import EBPFLoader
 
 

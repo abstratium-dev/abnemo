@@ -265,7 +265,7 @@ The eBPF module requires compilation and validation before use.
 
 ```bash
 # Run the build script
-./build_ebpf.sh
+./scripts/build_ebpf.sh
 ```
 
 **What it does:**
@@ -349,7 +349,7 @@ def test_ebpf_captures_traffic():
 export BCC_DEBUG=1
 
 # Run with verbose logging
-sudo python3 abnemo.py monitor --ebpf --summary-interval 5
+sudo python3 src/abnemo.py monitor --ebpf --summary-interval 5
 
 # Check kernel logs
 sudo dmesg | tail -50
@@ -541,7 +541,7 @@ pytest
 pytest --cov=. --cov-report=html
 
 # Build eBPF
-./build_ebpf.sh
+./scripts/build_ebpf.sh
 
 # Format code
 black *.py tests/

@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from web_server import get_logs_in_range
+from src.web_server import get_logs_in_range
 
 
 class TestTimezoneBugFix:

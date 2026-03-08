@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Test Docker enrichment functionality"""
 
-from docker_enrichment import DockerEnricher
+from src.docker_enrichment import DockerEnricher
 
 # Create enricher
 enricher = DockerEnricher()

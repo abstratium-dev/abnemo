@@ -4,7 +4,7 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
 
 ## Today
 
-- document that i have to use `sudo ./abnemo.sh monitor --enable-process-tracking --summary-interval 10 --top 9999 --ebpf --web --web-port 30032 --isp-debug`
+- document that i have to use `sudo ./scripts/abnemo.sh monitor --enable-process-tracking --summary-interval 10 --top 9999 --ebpf --web --web-port 30032 --isp-debug`
 - README.md should reference all the docs
 - BACKUP and restore of iptables!!!!
 - tests

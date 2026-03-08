@@ -116,7 +116,7 @@ docker inspect <container_id>
 sudo usermod -aG docker $USER
 
 # Or run with sudo (already required for eBPF)
-sudo ./abnemo.sh monitor --ebpf
+sudo ./scripts/abnemo.sh monitor --ebpf
 ```
 
 ## Performance Impact

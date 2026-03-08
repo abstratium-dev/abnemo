@@ -272,9 +272,9 @@ class TestNetworkNameReplacement:
         formatter = IptablesTreeFormatter()
         output = formatter.format_chain(docker_chain, table)
         
-        # Should show network name for both in and out interfaces
-        assert 'in:!from-manou-20251001_checkmk-network' in output
-        assert 'out:from-manou-20251001_checkmk-network' in output
+        # Should show network name (with emoji label) for both in and out interfaces
+        assert 'in:!🐋 from-manou-20251001_checkmk-network' in output
+        assert 'out:🐋 from-manou-20251001_checkmk-network' in output
         # Should NOT show the interface ID
         assert 'br-48b7a6d85e30' not in output
         # Should show container name

@@ -6,7 +6,7 @@ Tests for iptables parser
 import pytest
 import os
 from src.iptables.parser import IptablesParser, load_iptables_config
-from docker_enrichment import DockerEnricher
+from src.docker_enrichment import DockerEnricher
 
 
 # Get the path to fixture files

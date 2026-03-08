@@ -14,7 +14,7 @@ python3 -c "import bcc; print('✓ BCC installed')"
 ## 2. Build & Verify
 
 ```bash
-./build_ebpf.sh
+./scripts/build_ebpf.sh
 ```
 
 Expected output:
@@ -31,10 +31,10 @@ Expected output:
 
 ```bash
 # Basic usage
-sudo ./abnemo.sh monitor --ebpf --summary-interval 10
+sudo ./scripts/abnemo.sh monitor --ebpf --summary-interval 10
 
 # With all options
-sudo python3 abnemo.py monitor \
+sudo python3 src/abnemo.py monitor \
     --ebpf \
     --summary-interval 10 \
     --top 20 \
@@ -63,12 +63,12 @@ Process: ping (PID: 12347)
 
 **Standard mode (might miss short processes):**
 ```bash
-sudo ./abnemo.sh monitor --enable-process-tracking --summary-interval 10
+sudo ./scripts/abnemo.sh monitor --enable-process-tracking --summary-interval 10
 ```
 
 **eBPF mode (catches everything):**
 ```bash
-sudo ./abnemo.sh monitor --ebpf --summary-interval 10
+sudo ./scripts/abnemo.sh monitor --ebpf --summary-interval 10
 ```
 
 Run `curl https://microsoft.com` in both - eBPF will catch it!
@@ -91,7 +91,7 @@ uname -r  # Need 4.x+
 sudo whoami
 
 # Check kernel support
-./build_ebpf.sh
+./scripts/build_ebpf.sh
 ```
 
 ## When to Use eBPF Mode
@@ -124,10 +124,10 @@ sudo whoami
 sudo apt install python3-bpfcc
 
 # Verify (once)
-./build_ebpf.sh
+./scripts/build_ebpf.sh
 
 # Run (always)
-sudo ./abnemo.sh monitor --ebpf --summary-interval 10
+sudo ./scripts/abnemo.sh monitor --ebpf --summary-interval 10
 ```
 
 That's it! You now have kernel-level network monitoring with zero race conditions. 🎉

@@ -134,34 +134,34 @@ Abnemo supports four traffic direction modes to control what network traffic is 
 ### Default: Outgoing Only
 ```bash
 # Monitor only what your system connects to
-sudo ./abnemo.sh monitor --web
+sudo ./scripts/abnemo.sh monitor --web
 
 # Equivalent to
-sudo python3 abnemo.py monitor --web --traffic-direction outgoing
+sudo python3 src/abnemo.py monitor --web --traffic-direction outgoing
 ```
 
 ### Bidirectional: Measure Actual Bandwidth
 ```bash
 # Track outgoing requests AND their responses (e.g., YouTube video data)
-sudo python3 abnemo.py monitor --web --traffic-direction bidirectional
+sudo python3 src/abnemo.py monitor --web --traffic-direction bidirectional
 ```
 
 ### All Traffic: Server Monitoring
 ```bash
 # Monitor everything including incoming SSH/web server connections
-sudo python3 abnemo.py monitor --web --traffic-direction all
+sudo python3 src/abnemo.py monitor --web --traffic-direction all
 ```
 
 ### Incoming Only: Server Monitoring
 ```bash
 # Monitor only incoming server connections (SSH, web, etc.)
-sudo python3 abnemo.py monitor --web --traffic-direction incoming
+sudo python3 src/abnemo.py monitor --web --traffic-direction incoming
 ```
 
 ### With eBPF
 ```bash
 # Bidirectional with eBPF process tracking
-sudo python3 abnemo.py monitor --ebpf --web --traffic-direction bidirectional
+sudo python3 src/abnemo.py monitor --ebpf --web --traffic-direction bidirectional
 ```
 
 ---
@@ -212,25 +212,25 @@ sudo python3 abnemo.py monitor --ebpf --web --traffic-direction bidirectional
 ### For Desktop/Laptop Users
 ```bash
 # Start with outgoing to see what connects
-sudo python3 abnemo.py monitor --web --traffic-direction outgoing
+sudo python3 src/abnemo.py monitor --web --traffic-direction outgoing
 
 # Switch to bidirectional to measure actual bandwidth
-sudo python3 abnemo.py monitor --web --traffic-direction bidirectional
+sudo python3 src/abnemo.py monitor --web --traffic-direction bidirectional
 ```
 
 ### For Servers (Clean Server Traffic Only)
 ```bash
 # Use 'incoming' to monitor only server connections (no client traffic)
-sudo python3 abnemo.py monitor --web --traffic-direction incoming
+sudo python3 src/abnemo.py monitor --web --traffic-direction incoming
 
 # Or use 'all' to see everything
-sudo python3 abnemo.py monitor --web --traffic-direction all --ebpf
+sudo python3 src/abnemo.py monitor --web --traffic-direction all --ebpf
 ```
 
 ### For Security Monitoring
 ```bash
 # Use 'all' with longer retention
-sudo python3 abnemo.py monitor \
+sudo python3 src/abnemo.py monitor \
   --web \
   --traffic-direction all \
   --log-retention-days 90 \

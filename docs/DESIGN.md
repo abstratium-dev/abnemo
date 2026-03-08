@@ -78,7 +78,6 @@ graph LR
         B[ebpf_monitor.py]
         C[process_tracker.py]
         D[isp_lookup.py]
-        E[iptables_generator.py]
     end
     
     subgraph "eBPF Components"

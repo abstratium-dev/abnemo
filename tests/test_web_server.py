@@ -16,7 +16,7 @@ from pathlib import Path
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from web_server import parse_log_timestamp, get_logs_in_range, create_app
+from src.web_server import parse_log_timestamp, get_logs_in_range, create_app
 
 
 class TestParseLogTimestamp:

@@ -233,13 +233,13 @@ abnemo/
 ### Usage
 ```bash
 # Current mode (Scapy)
-sudo ./abnemo.sh monitor --enable-process-tracking
+sudo ./scripts/abnemo.sh monitor --enable-process-tracking
 
 # New eBPF mode (no race conditions!)
-sudo ./abnemo.sh monitor --ebpf
+sudo ./scripts/abnemo.sh monitor --ebpf
 
 # Hybrid mode (eBPF for process tracking, Scapy for packet details)
-sudo ./abnemo.sh monitor --ebpf --enable-process-tracking
+sudo ./scripts/abnemo.sh monitor --ebpf --enable-process-tracking
 ```
 
 ## Recommendation

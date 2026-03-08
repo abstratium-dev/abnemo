@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from process_tracker import ProcessTracker
+from src.process_tracker import ProcessTracker
 
 
 def _ip_port_to_socket(ip, port):

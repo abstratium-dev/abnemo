@@ -36,7 +36,7 @@ sudo chown -R abnemo:abnemo /var/lib/abnemo
 
 # Make scripts executable
 sudo chmod +x /opt/abnemo/abnemo.py
-sudo chmod +x /opt/abnemo/abnemo.sh
+sudo chmod +x /opt/abnem./scripts/abnemo.sh
 ```
 
 ### 3. Create Systemd Service File

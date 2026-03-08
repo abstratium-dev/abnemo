@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Test script to demonstrate improved fail2ban visualization"""
 
-from fail2ban_visualizer import Fail2banParser, Fail2banMermaidGenerator
+from src.fail2ban_visualizer import Fail2banParser, Fail2banMermaidGenerator
 
 # Read sample fail2ban output
 with open('__NO_COMMIT__fail2ban.txt', 'r') as f:

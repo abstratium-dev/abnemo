@@ -8,8 +8,11 @@ import argparse
 import sys
 import os
 import json
-from packet_monitor import PacketMonitor
-from iptables_generator import IPTablesGenerator
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.packet_monitor import PacketMonitor
 
 
 def monitor_command(args):
@@ -20,7 +23,7 @@ def monitor_command(args):
     # Start web server in background if requested
     if args.web:
         import threading
-        from web_server import start_web_server
+        from src.web_server import start_web_server
         web_thread = threading.Thread(
             target=start_web_server,
             args=(args.log_dir, args.web_port),
@@ -33,7 +36,7 @@ def monitor_command(args):
     
     # Check if eBPF mode is requested
     if args.ebpf:
-        from ebpf_monitor import EBPFMonitor
+        from src.ebpf_monitor import EBPFMonitor
         monitor = EBPFMonitor(
             log_dir=args.log_dir,
             isp_api_key=api_key,
@@ -99,93 +102,7 @@ def monitor_command(args):
     log_file = monitor.save_statistics()
     
     print(f"\n[*] To generate iptables rules from this log, run:")
-    print(f"    python3 abnemo.py generate --log {log_file} --interactive")
-
-
-def generate_command(args):
-    """Handle the generate subcommand"""
-    generator = IPTablesGenerator()
-    
-    if not os.path.exists(args.log):
-        print(f"[!] Error: Log file not found: {args.log}")
-        sys.exit(1)
-    
-    # Load traffic data
-    print(f"[*] Loading traffic data from: {args.log}")
-    
-    if args.interactive:
-        # Interactive mode - let user select IPs
-        import json
-        with open(args.log, 'r') as f:
-            data = json.load(f)
-        
-        traffic_data = data.get('traffic_by_ip', {})
-        sorted_traffic = sorted(traffic_data.items(), 
-                               key=lambda x: x[1]['bytes'], 
-                               reverse=True)
-        
-        print("\n" + "="*80)
-        print("INTERACTIVE MODE - Select IPs to block")
-        print("="*80)
-        print(f"{'#':<5} {'IP Address':<20} {'Domain':<30} {'Bytes':<15} {'Packets'}")
-        print("-"*80)
-        
-        for idx, (ip, stats) in enumerate(sorted_traffic, 1):
-            domain = stats['domains'][0] if stats['domains'] else "unknown"
-            if len(domain) > 28:
-                domain = domain[:25] + "..."
-            print(f"{idx:<5} {ip:<20} {domain:<30} {stats['bytes']:>13,} {stats['packets']:>8}")
-        
-        print("\nEnter IP numbers to block (comma-separated, e.g., 1,3,5) or 'all' for all IPs:")
-        print("You can also enter IP addresses directly (e.g., 192.168.1.1,10.0.0.1)")
-        print("Press Enter to skip: ", end='')
-        
-        selection = input().strip()
-        
-        if selection.lower() == 'all':
-            for ip in traffic_data.keys():
-                generator.add_ip_to_blocklist(ip)
-        elif selection:
-            # Parse selection
-            parts = [p.strip() for p in selection.split(',')]
-            for part in parts:
-                if part.isdigit():
-                    idx = int(part) - 1
-                    if 0 <= idx < len(sorted_traffic):
-                        ip = sorted_traffic[idx][0]
-                        generator.add_ip_to_blocklist(ip)
-                else:
-                    # Assume it's an IP address
-                    generator.add_ip_to_blocklist(part)
-    
-    else:
-        # Automatic mode based on thresholds
-        generator.load_from_traffic_log(
-            args.log,
-            min_bytes=args.min_bytes,
-            min_packets=args.min_packets,
-            specific_ips=args.ips.split(',') if args.ips else None,
-            specific_domains=args.domains.split(',') if args.domains else None
-        )
-    
-    if not generator.blocked_ips:
-        print("[!] No IPs selected for blocking")
-        sys.exit(0)
-    
-    # Print summary
-    generator.print_summary()
-    
-    # Generate rules
-    output_file = args.output or "block_rules.sh"
-    unblock_file = args.output.replace('.sh', '_unblock.sh') if args.output else "unblock_rules.sh"
-    
-    generator.save_rules(output_file, format=args.format, chain=args.chain, action=args.action)
-    generator.generate_unblock_script(unblock_file, chain=args.chain, action=args.action)
-    
-    print(f"\n[*] To apply these rules, run:")
-    print(f"    sudo bash {output_file}")
-    print(f"\n[*] To remove these rules later, run:")
-    print(f"    sudo bash {unblock_file}")
+    print(f"    python3 src/abnemo.py generate --log {log_file} --interactive")
 
 
 def list_logs_command(args):
@@ -271,7 +188,7 @@ def iptables_tree_command(args):
 
 def web_command(args):
     """Handle the web subcommand - start standalone web server"""
-    from web_server import start_web_server
+    from src.web_server import start_web_server
     
     print(f"[*] Starting web server on http://0.0.0.0:{args.port}")
     print(f"[*] Log directory: {args.log_dir}")
@@ -290,31 +207,31 @@ def main():
         epilog="""
 Examples:
   # Monitor traffic for 60 seconds
-  sudo python3 abnemo.py monitor --duration 60
+  sudo python3 src/abnemo.py monitor --duration 60
 
   # Monitor specific interface
-  sudo python3 abnemo.py monitor --interface eth0
+  sudo python3 src/abnemo.py monitor --interface eth0
 
   # Generate rules interactively from a log
-  python3 abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --interactive
+  python3 src/abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --interactive
 
   # Generate rules for IPs with >10MB traffic
-  python3 abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --min-bytes 10485760
+  python3 src/abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --min-bytes 10485760
 
   # Block specific domains
-  python3 abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --domains "example.com,ads.com"
+  python3 src/abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --domains "example.com,ads.com"
 
   # List all captured logs
-  python3 abnemo.py list-logs
+  python3 src/abnemo.py list-logs
 
   # Visualize iptables configuration as tree
-  sudo python3 abnemo.py iptables-tree
+  sudo python3 src/abnemo.py iptables-tree
 
   # Show only Docker-related chains and rules
-  sudo python3 abnemo.py iptables-tree --docker-only
+  sudo python3 src/abnemo.py iptables-tree --docker-only
 
   # Show specific chain
-  sudo python3 abnemo.py iptables-tree --chain DOCKER --max-rules 10
+  sudo python3 src/abnemo.py iptables-tree --chain DOCKER --max-rules 10
         """
     )
     
@@ -386,8 +303,6 @@ Examples:
     # Execute command
     if args.command == 'monitor':
         monitor_command(args)
-    elif args.command == 'generate':
-        generate_command(args)
     elif args.command == 'list-logs':
         list_logs_command(args)
     elif args.command == 'web':

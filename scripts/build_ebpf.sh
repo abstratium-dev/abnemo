@@ -6,6 +6,15 @@
 
 set -e  # Exit on error
 
+# Get the directory where this script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Get the project root (parent of scripts directory)
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+
+# Change to project root to ensure relative paths work
+cd "$PROJECT_ROOT"
+
 echo "========================================="
 echo "Abnemo eBPF Build Script"
 echo "========================================="
@@ -207,10 +216,10 @@ echo ""
 echo "eBPF module is ready to use."
 echo ""
 echo "Usage:"
-echo "  sudo ./abnemo.sh monitor --ebpf"
+echo "  sudo ./scripts/abnemo.sh monitor --ebpf"
 echo ""
 echo "Or:"
-echo "  sudo python3 abnemo.py monitor --ebpf --summary-interval 10"
+echo "  sudo python3 src/abnemo.py monitor --ebpf --summary-interval 10"
 echo ""
 echo "Note: eBPF requires root privileges to attach kernel probes."
 echo "========================================="

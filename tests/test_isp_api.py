@@ -3,7 +3,7 @@
 Test script for ISP lookup API
 """
 
-from isp_lookup import ISPLookup
+from src.isp_lookup import ISPLookup
 
 # Test with free tier
 print("Testing Free Tier API:")
