@@ -260,21 +260,6 @@ Examples:
                                     'bidirectional (responses to outgoing connections), '
                                     'all (everything)')
     
-    # Generate command
-    generate_parser = subparsers.add_parser('generate', help='Generate iptables rules from log')
-    generate_parser.add_argument('-l', '--log', required=True, help='Traffic log file to analyze')
-    generate_parser.add_argument('-o', '--output', help='Output file for iptables rules (default: block_rules.sh)')
-    generate_parser.add_argument('-f', '--format', choices=['script', 'restore'], default='script',
-                                help='Output format (default: script)')
-    generate_parser.add_argument('-c', '--chain', default='OUTPUT', help='IPTables chain (default: OUTPUT)')
-    generate_parser.add_argument('-a', '--action', default='DROP', choices=['DROP', 'REJECT'],
-                                help='Action to take (default: DROP)')
-    generate_parser.add_argument('--interactive', action='store_true', help='Interactive IP selection mode')
-    generate_parser.add_argument('--min-bytes', type=int, help='Minimum bytes threshold for auto-blocking')
-    generate_parser.add_argument('--min-packets', type=int, help='Minimum packets threshold for auto-blocking')
-    generate_parser.add_argument('--ips', help='Comma-separated list of specific IPs to block')
-    generate_parser.add_argument('--domains', help='Comma-separated list of domains to block')
-    
     # List logs command
     list_parser = subparsers.add_parser('list-logs', help='List all captured traffic logs')
     list_parser.add_argument('--log-dir', default='traffic_logs', help='Directory containing logs (default: traffic_logs)')
@@ -288,7 +273,7 @@ Examples:
     # IPTables tree visualization command
     tree_parser = subparsers.add_parser('iptables-tree', help='Visualize iptables configuration as tree')
     tree_parser.add_argument('-f', '--file', help='Path to iptables output file (if not provided, runs iptables command)')
-    tree_parser.add_argument('-e', '--enrichment', help='Path to Docker enrichment data file')
+    tree_parser.add_argument('-e', '--enrichment', help='Path to Docker enrichment data file (if not provided, runs docker ps command)')
     tree_parser.add_argument('-t', '--table', default='filter', help='Table to visualize (default: filter)')
     tree_parser.add_argument('-d', '--docker-only', action='store_true', help='Show only Docker-related chains and rules')
     tree_parser.add_argument('-n', '--no-rules', action='store_true', help='Hide rules, show only chains')

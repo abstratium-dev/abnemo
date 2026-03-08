@@ -17,7 +17,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
-from flask import Flask, request, jsonify, send_from_directory, redirect, g, Response
+from flask import Flask, request, jsonify, send_from_directory, redirect, g, Response, render_template
 
 # Import iptables tree formatter
 try:
@@ -386,7 +386,8 @@ def create_app(log_dir):
     # Get the project root directory (parent of src/)
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     static_folder = os.path.join(project_root, 'web_static')
-    app = Flask(__name__, static_folder=static_folder)
+    template_folder = os.path.join(project_root, 'templates')
+    app = Flask(__name__, static_folder=static_folder, template_folder=template_folder)
 
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
@@ -512,74 +513,18 @@ def create_app(log_dir):
     
     @app.route('/')
     def index():
-        """Serve index.html"""
-        return send_from_directory(static_folder, 'index.html')
+        """Serve index page using template"""
+        return render_template('index.html')
     
     @app.route('/iptables')
     def iptables_page():
-        """Display iptables configuration as monospaced text"""
-        auth_error = _ensure_authenticated_response()
-        if auth_error:
-            return auth_error
-        
-        if not IPTABLES_AVAILABLE:
-            return Response(
-                '<html><body><h1>Error</h1><p>iptables module not available</p></body></html>',
-                mimetype='text/html'
-            ), 500
-        
-        try:
-            # Load iptables configuration
-            config = load_iptables_config()
-            
-            # Format as tree
-            formatter = IptablesTreeFormatter(
-                show_docker_only=False,
-                show_rules=True,
-                inline_chains=True,
-                compress_same_target=True
-            )
-            tree_text = formatter.format_config(config)
-            
-            # Return as HTML with monospaced text
-            html = f'''<!DOCTYPE html>
-<html>
-<head>
-    <title>iptables Configuration</title>
-    <style>
-        body {{
-            margin: 0;
-            padding: 20px;
-            background-color: #1e1e1e;
-            color: #d4d4d4;
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-            font-size: 14px;
-            line-height: 1.5;
-        }}
-        pre {{
-            margin: 0;
-            white-space: pre;
-            overflow-x: auto;
-        }}
-    </style>
-</head>
-<body>
-    <pre>{tree_text}</pre>
-</body>
-</html>'''
-            return Response(html, mimetype='text/html')
-            
-        except Exception as e:
-            logger.error(f'Error loading iptables configuration: {e}', exc_info=True)
-            return Response(
-                f'<html><body><h1>Error</h1><p>Failed to load iptables: {str(e)}</p></body></html>',
-                mimetype='text/html'
-            ), 500
+        """Display iptables visualizer page using template"""
+        return render_template('iptables.html')
     
     @app.route('/fail2ban')
     def fail2ban_page():
-        """Serve fail2ban visualizer page"""
-        return send_from_directory(static_folder, 'fail2ban_page.html')
+        """Serve fail2ban visualizer page using template"""
+        return render_template('fail2ban.html')
     
     @app.route('/<path:path>')
     def static_files(path):

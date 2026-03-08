@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}iptables Visualizer - Abnemo{% endblock %}
+
+{% block header_title %}🔥 iptables Firewall Visualizer{% endblock %}
+{% block header_subtitle %}Visualize and understand firewall rules with Docker enrichment{% endblock %}
+
+{% block extra_head %}
+{% endblock %}
+
+{% block extra_styles %}
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.controls {
+    margin-bottom: 20px;
+}
+
+#text-container {
+    margin-top: 20px;
+    padding: 20px;
+    background: #1e1e1e;
+    border-radius: 8px;
+    min-height: 400px;
+    overflow-x: auto;
+}
+
+#text-container pre {
+    margin: 0;
+    color: #d4d4d4;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre;
+}
+
+.hidden {
+    display: none;
+}
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div id="error-container"></div>
+    
+    <div class="controls">
+        <button onclick="loadLocalRules()">🔄 Reload iptables Rules</button>
+    </div>
+    
+    <div id="text-container" class="hidden"></div>
+    
+    <div id="legend" style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px; display: none;">
+        <h3 style="margin-bottom: 15px; color: #667eea;">Understanding the iptables Tree View</h3>
+        
+        <div style="margin-bottom: 20px;">
+            <h4 style="color: #333; margin-bottom: 10px;">� Structure</h4>
+            <div style="margin-left: 20px; color: #555; line-height: 1.8;">
+                <div><strong>Tables</strong> - Top-level organization (filter, nat, mangle, raw)</div>
+                <div><strong>Chains</strong> - Processing pipelines within tables (INPUT, OUTPUT, FORWARD, etc.)</div>
+                <div><strong>Rules</strong> - Individual firewall rules that match and act on packets</div>
+                <div><strong>Nested Chains</strong> - Custom chains are shown indented under rules that jump to them</div>
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <h4 style="color: #333; margin-bottom: 10px;">🔄 Compression & Simplification</h4>
+            <div style="margin-left: 20px; color: #555; line-height: 1.8;">
+                <div><strong>Inline Chains</strong> - Custom chains are nested directly under the rules that reference them</div>
+                <div><strong>Same-Target Compression</strong> - Multiple consecutive rules with the same target are grouped together</div>
+                <div><strong>Docker Enrichment</strong> - Container names (🐳) and network names (🐋) are shown when available</div>
+            </div>
+        </div>
+        
+        <h4 style="color: #333; margin-bottom: 10px;">🏷️ Symbols & Indicators</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; margin-left: 20px;">
+            <div><span style="color: #27AE60;">✅ ACCEPT</span> - Traffic is allowed through</div>
+            <div><span style="color: #E74C3C;">❌ DROP/REJECT</span> - Traffic is blocked</div>
+            <div><span style="color: #3498DB;">🐳 Container</span> - Docker container name</div>
+            <div><span style="color: #3498DB;">🐋 Network</span> - Docker network name</div>
+            <div><span style="color: #95A5A6;">🏠 Private IP</span> - Internal network address</div>
+            <div><span style="color: #95A5A6;">🔁 Loopback</span> - Local traffic (127.0.0.1)</div>
+            <div><span style="color: #F39C12;">→ JUMP</span> - Rule jumps to another chain</div>
+            <div><span style="color: #9B59B6;">⚡ RETURN</span> - Returns to calling chain</div>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #e8f4f8; border-left: 4px solid #3498DB; border-radius: 4px;">
+            <strong>💡 Tip:</strong> Rules are evaluated top-to-bottom. The first matching rule determines the action. 
+            Indented chains show the flow when a rule jumps to a custom chain.
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+function showText(text) {
+    const container = document.getElementById('text-container');
+    const legend = document.getElementById('legend');
+    container.classList.remove('hidden');
+    container.innerHTML = `<pre>${text}</pre>`;
+    legend.style.display = 'block';
+}
+
+async function loadLocalRules() {
+    clearError();
+    const container = document.getElementById('text-container');
+    const legend = document.getElementById('legend');
+    container.classList.remove('hidden');
+    container.innerHTML = '<div class="loading">Loading iptables configuration...</div>';
+    legend.style.display = 'none';
+    
+    try {
+        // Always load all rules (no_rules=false means show all rules)
+        const url = '/api/iptables/text?no_rules=false';
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Failed to load' }));
+            showError(error.error || 'Failed to load iptables configuration');
+            container.classList.add('hidden');
+            return;
+        }
+        
+        const data = await response.json();
+        showText(data.text);
+        
+    } catch (error) {
+        showError('Error loading iptables configuration: ' + error.message);
+        container.classList.add('hidden');
+    }
+}
+
+// Auto-load iptables rules when page loads
+window.addEventListener('DOMContentLoaded', () => {
+    loadLocalRules();
+});
+{% endblock %}

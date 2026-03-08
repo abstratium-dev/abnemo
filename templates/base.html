@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Abnemo - Network Monitor{% endblock %}</title>
+    {% block extra_head %}{% endblock %}
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .nav-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-right: 10px;
+        }
+        
+        .nav-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .nav-links {
+            margin-top: 15px;
+        }
+        
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 20px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        .nav-links a:hover {
+            color: #764ba2;
+        }
+        
+        .auth-card {
+            display: none;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .auth-card.active {
+            display: flex;
+        }
+
+        .auth-card strong {
+            color: #333;
+        }
+
+        .auth-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .auth-details {
+            color: #555;
+            font-size: 0.95em;
+            margin-top: 6px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+
+        .button-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 1px solid #dcdfe6;
+        }
+
+        .button-secondary:hover {
+            background: #edf1f7;
+            box-shadow: none;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8em;
+            }
+        }
+
+        {% block extra_styles %}{% endblock %}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>{% block header_title %}🌐 Abnemo{% endblock %}</h1>
+            <p class="subtitle">{% block header_subtitle %}Network Traffic Monitor & Analyzer{% endblock %}</p>
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+                <h3 style="color: #667eea; margin-bottom: 12px; font-size: 1.1em;">🛠️ Navigation</h3>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <a href="/" class="nav-button">
+                        🌐 Network Monitor
+                    </a>
+                    <a href="/iptables" class="nav-button">
+                        🔥 iptables Firewall
+                    </a>
+                    <a href="/fail2ban" class="nav-button">
+                        🛡️ fail2ban Protection
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <div class="auth-card" id="auth-card">
+            <div>
+                <div id="auth-status-text"><strong>Authentication:</strong> Checking…</div>
+                <div class="auth-details" id="auth-user-details"></div>
+            </div>
+            <div class="auth-actions">
+                <button id="auth-login-btn" class="button-secondary" onclick="startLogin()">Sign In</button>
+                <button id="auth-logout-btn" class="button-secondary" onclick="logout()">Sign Out</button>
+            </div>
+        </div>
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <script>
+        let authState = { oauth_enabled: false, authenticated: true, user: null, required_group: null, required_groups: null, has_access: true };
+
+        function updateAppVisibility() {
+            const appContent = document.getElementById('app-content');
+            if (!appContent) return;
+            if (!authState.oauth_enabled) {
+                appContent.style.display = '';
+                return;
+            }
+            const visible = authState.authenticated && authState.has_access;
+            appContent.style.display = visible ? '' : 'none';
+            if (!visible) {
+                const errorContainer = document.getElementById('error-container');
+                if (errorContainer) {
+                    errorContainer.innerHTML = '';
+                }
+            }
+        }
+
+        function showError(message) {
+            const errorContainer = document.getElementById('error-container');
+            if (errorContainer) {
+                errorContainer.innerHTML = `<div class="error">${message}</div>`;
+            }
+        }
+        
+        function clearError() {
+            const errorContainer = document.getElementById('error-container');
+            if (errorContainer) {
+                errorContainer.innerHTML = '';
+            }
+        }
+
+        async function fetchAuthStatus() {
+            try {
+                const response = await fetch('/api/user');
+                if (response.status === 401) {
+                    const data = await response.json().catch(() => ({}));
+                    authState = {
+                        oauth_enabled: data.oauth_enabled ?? true,
+                        authenticated: false,
+                        user: null,
+                        required_group: data.required_group ?? null,
+                        required_groups: data.required_groups ?? null,
+                        has_access: false
+                    };
+                } else if (response.ok) {
+                    const data = await response.json();
+                    authState = {
+                        oauth_enabled: data.oauth_enabled ?? false,
+                        authenticated: data.authenticated ?? true,
+                        user: data.user || null,
+                        required_group: data.required_group ?? null,
+                        required_groups: data.required_groups ?? null,
+                        has_access: data.has_access ?? true
+                    };
+                } else if (response.status === 403) {
+                    const data = await response.json().catch(() => ({}));
+                    authState = {
+                        oauth_enabled: data.oauth_enabled ?? true,
+                        authenticated: data.authenticated ?? true,
+                        user: data.user || null,
+                        required_group: data.required_group ?? null,
+                        required_groups: data.required_groups ?? null,
+                        has_access: false
+                    };
+                } else {
+                    authState = { oauth_enabled: false, authenticated: true, user: null, required_group: null, required_groups: null, has_access: true };
+                }
+            } catch (error) {
+                console.warn('Failed to fetch auth state', error);
+                authState = { oauth_enabled: false, authenticated: true, user: null, required_group: null, required_groups: null, has_access: true };
+            }
+            updateAuthCard();
+            updateAppVisibility();
+            return authState;
+        }
+
+        function updateAuthCard() {
+            const card = document.getElementById('auth-card');
+            const statusText = document.getElementById('auth-status-text');
+            const userDetails = document.getElementById('auth-user-details');
+            const loginBtn = document.getElementById('auth-login-btn');
+            const logoutBtn = document.getElementById('auth-logout-btn');
+
+            if (!card) {
+                return;
+            }
+
+            if (!authState.oauth_enabled) {
+                card.classList.remove('active');
+                return;
+            }
+
+            card.classList.add('active');
+            if (authState.authenticated) {
+                const displayName = (authState.user && (authState.user.name || authState.user.email || authState.user.sub)) || 'Authenticated user';
+                const emailDetail = authState.user?.email ? `Email: ${authState.user.email}` : '';
+                if (authState.has_access) {
+                    statusText.innerHTML = `<strong>Authentication:</strong> Signed in as ${displayName}`;
+                    userDetails.textContent = emailDetail;
+                    loginBtn.style.display = 'none';
+                    logoutBtn.style.display = 'inline-block';
+                    clearError();
+                } else {
+                    statusText.innerHTML = `<strong>Authentication:</strong> Signed in as ${displayName} (insufficient permissions)`;
+                    const requiredGroupLabel = authState.required_groups && authState.required_groups.length > 0
+                        ? `You must belong to one of the following groups to view monitoring data: ${authState.required_groups.join(', ')}`
+                        : 'Your account is not authorized to view monitoring data.';
+                    userDetails.textContent = `${requiredGroupLabel}${emailDetail ? ' — ' + emailDetail : ''}`;
+                    loginBtn.style.display = 'inline-block';
+                    logoutBtn.style.display = 'inline-block';
+                }
+            } else {
+                statusText.innerHTML = '<strong>Authentication:</strong> Sign in required';
+                userDetails.textContent = 'Please authenticate via Abstrauth to access traffic data.';
+                loginBtn.style.display = 'inline-block';
+                logoutBtn.style.display = 'none';
+            }
+            updateAppVisibility();
+        }
+
+        function startLogin() {
+            window.location.href = '/oauth/login';
+        }
+
+        async function logout() {
+            if (!authState.oauth_enabled) {
+                return;
+            }
+            try {
+                await fetch('/api/logout', { method: 'POST' });
+            } catch (error) {
+                console.warn('Logout failed', error);
+            }
+            await fetchAuthStatus();
+            showError('You have been signed out. Please sign in again to load data.');
+        }
+
+        // Initialize auth on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            await fetchAuthStatus();
+        });
+
+        {% block extra_scripts %}{% endblock %}
+    </script>
+</body>
+</html>

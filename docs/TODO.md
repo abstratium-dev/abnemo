@@ -32,7 +32,6 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
   - always require ebpf
   - remove code that i don't understand
   - no need for command to read files
-  - no need for command to generate iptables rules, but it should be used by web
 
 
 ## Tomorrow
