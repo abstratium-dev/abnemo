@@ -716,6 +716,14 @@ class PacketMonitor:
             json.dump(output, f, indent=2)
         
         print(f"[+] Statistics saved to: {filename}")
+        
+        # Trigger asynchronous warn-list analysis
+        try:
+            from src.filters import start_traffic_analysis
+            start_traffic_analysis(filename)
+        except Exception as e:
+            print(f"[!] Warning: Could not start warn-list analysis: {e}")
+        
         return filename
     
     def print_summary(self, top_n=20):

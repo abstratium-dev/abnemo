@@ -590,6 +590,35 @@ tr.filter-hidden {
         </div>
     </div>
     
+    <!-- Warn-list Filter Management Section -->
+    <div class="filter-section">
+        <div class="filter-header" onclick="toggleWarnlistSection()">
+            <h3>⚠️ Warn-list Filters (Highlight Matching)</h3>
+            <span class="filter-toggle-icon" id="warnlist-toggle-icon">▼</span>
+        </div>
+        <div class="filter-content" id="warnlist-content">
+            <div class="filter-controls">
+                <button onclick="showAddWarnlistForm()">+ Add Warn-list Filter</button>
+            </div>
+            
+            <div id="add-warnlist-form" class="filter-form" style="display: none;">
+                <h4 style="margin-bottom: 10px; color: var(--color-text-primary);">Add New Warn-list Filter (Highlight Matching Traffic)</h4>
+                <input type="text" id="new-warnlist-pattern" placeholder="Regex pattern (e.g., malicious-domain\.com)" />
+                <textarea id="new-warnlist-description" placeholder="Description (e.g., 'Known malicious domain')"></textarea>
+                <div class="filter-form-actions">
+                    <button onclick="saveNewWarnlist()">Save</button>
+                    <button class="quick-btn" onclick="cancelAddWarnlist()">Cancel</button>
+                </div>
+            </div>
+            
+            <div id="warnlist-status"></div>
+            
+            <div class="filter-list" id="warnlist-list">
+                <div class="loading">Loading warn-list filters...</div>
+            </div>
+        </div>
+    </div>
+    
     <div class="stats" id="stats-container" style="display: none;">
         <div class="stats-grid">
             <div class="stat-card">
@@ -789,8 +818,9 @@ function displayData(data) {
         th.addEventListener('click', () => sortTable(th.dataset.sort));
     });
     
-    // Apply filters to newly rendered data
+    // Apply filters and warn-list to newly rendered data
     applyFiltersToCurrentData();
+    applyWarnlistToCurrentData();
 }
 
 let currentSort = { column: 'bytes', direction: 'desc' };
@@ -928,8 +958,9 @@ function rebuildTable(sortedIps) {
         }
     });
     
-    // Apply filters to rebuilt table
+    // Apply filters and warn-list to rebuilt table
     applyFiltersToCurrentData();
+    applyWarnlistToCurrentData();
 }
 
 async function showProcessDetails(pid) {
@@ -1027,6 +1058,7 @@ document.addEventListener('keydown', (e) => {
 
 let regexFilters = [];
 let filterToggles = {}; // Track individual filter toggle states
+let warnlistFilters = []; // Warn-list filters (highlight matching traffic)
 
 function getLocalStorageKey(pattern) {
     // Create a safe key from the pattern
@@ -1505,8 +1537,332 @@ function showFilterStatus(message, type) {
     statusDiv.innerHTML = `<div class="filter-status ${type}">${message}</div>`;
 }
 
+// ========== WARN-LIST FILTER MANAGEMENT ==========
+
+function toggleWarnlistSection() {
+    const content = document.getElementById('warnlist-content');
+    const icon = document.getElementById('warnlist-toggle-icon');
+    content.classList.toggle('expanded');
+    icon.classList.toggle('expanded');
+    
+    if (content.classList.contains('expanded') && warnlistFilters.length === 0) {
+        loadWarnlistFilters();
+    }
+}
+
+async function loadWarnlistFilters() {
+    try {
+        const response = await fetch('/api/regex-filters/warnlist');
+        if (!response.ok) {
+            throw new Error('Failed to load warn-list filters');
+        }
+        const data = await response.json();
+        warnlistFilters = data.filters || [];
+        
+        renderWarnlistList();
+        applyWarnlistToCurrentData();
+    } catch (error) {
+        document.getElementById('warnlist-list').innerHTML = `<div class="error">Error loading warn-list filters: ${error.message}</div>`;
+    }
+}
+
+function renderWarnlistList() {
+    const container = document.getElementById('warnlist-list');
+    
+    if (warnlistFilters.length === 0) {
+        container.innerHTML = '<div class="no-data">No warn-list filters defined. Click "Add Warn-list Filter" to create one.</div>';
+        return;
+    }
+    
+    let html = '';
+    warnlistFilters.forEach(filter => {
+        const createdDate = new Date(filter.created_at).toLocaleString();
+        const updatedDate = filter.updated_at ? new Date(filter.updated_at).toLocaleString() : createdDate;
+        
+        html += `
+            <div class="filter-item" id="warnlist-${filter.id}">
+                <div class="filter-item-header">
+                    <div class="filter-item-pattern" id="warnlist-pattern-display-${filter.id}">${escapeHtml(filter.pattern)}</div>
+                    <div class="filter-item-actions">
+                        <button onclick="editWarnlist('${filter.id}')">Edit</button>
+                        <button onclick="deleteWarnlist('${filter.id}')" class="quick-btn">Delete</button>
+                    </div>
+                </div>
+                ${filter.description ? `<div class="filter-item-description" id="warnlist-description-display-${filter.id}">${escapeHtml(filter.description)}</div>` : `<div class="filter-item-description" id="warnlist-description-display-${filter.id}" style="display:none;"></div>`}
+                <div class="filter-item-edit-form" id="warnlist-edit-form-${filter.id}">
+                    <input type="text" id="warnlist-edit-pattern-${filter.id}" value="${escapeHtml(filter.pattern)}" placeholder="Regex pattern" />
+                    <textarea id="warnlist-edit-description-${filter.id}" placeholder="Description (optional)">${escapeHtml(filter.description || '')}</textarea>
+                    <div class="filter-item-edit-actions">
+                        <button onclick="saveWarnlistEdit('${filter.id}')">Save</button>
+                        <button class="quick-btn" onclick="cancelWarnlistEdit('${filter.id}')">Cancel</button>
+                    </div>
+                </div>
+                <div class="filter-item-meta">
+                    Created by ${escapeHtml(filter.user_email)} on ${createdDate}
+                    ${filter.updated_at && filter.updated_at !== filter.created_at ? ` • Updated ${updatedDate}` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function showAddWarnlistForm() {
+    document.getElementById('add-warnlist-form').style.display = 'block';
+    document.getElementById('new-warnlist-pattern').focus();
+}
+
+function cancelAddWarnlist() {
+    document.getElementById('add-warnlist-form').style.display = 'none';
+    document.getElementById('new-warnlist-pattern').value = '';
+    document.getElementById('new-warnlist-description').value = '';
+}
+
+async function saveNewWarnlist() {
+    const pattern = document.getElementById('new-warnlist-pattern').value.trim();
+    const description = document.getElementById('new-warnlist-description').value.trim();
+    
+    if (!pattern) {
+        alert('Please enter a regex pattern');
+        return;
+    }
+    
+    // Validate regex
+    try {
+        new RegExp(pattern);
+    } catch (e) {
+        alert('Invalid regex pattern: ' + e.message);
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/regex-filters/warnlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pattern, description })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to save warn-list filter');
+        }
+        
+        const data = await response.json();
+        warnlistFilters.push(data.filter);
+        
+        cancelAddWarnlist();
+        renderWarnlistList();
+        applyWarnlistToCurrentData();
+        showWarnlistStatus('Warn-list filter added successfully', 'info');
+    } catch (error) {
+        alert('Error saving warn-list filter: ' + error.message);
+    }
+}
+
+function editWarnlist(filterId) {
+    const patternDisplay = document.getElementById(`warnlist-pattern-display-${filterId}`);
+    const descriptionDisplay = document.getElementById(`warnlist-description-display-${filterId}`);
+    const editForm = document.getElementById(`warnlist-edit-form-${filterId}`);
+    
+    if (patternDisplay) patternDisplay.classList.add('editing');
+    if (descriptionDisplay) descriptionDisplay.style.display = 'none';
+    if (editForm) editForm.classList.add('active');
+    
+    const patternInput = document.getElementById(`warnlist-edit-pattern-${filterId}`);
+    if (patternInput) {
+        setTimeout(() => patternInput.focus(), 100);
+    }
+}
+
+function cancelWarnlistEdit(filterId) {
+    const patternDisplay = document.getElementById(`warnlist-pattern-display-${filterId}`);
+    const descriptionDisplay = document.getElementById(`warnlist-description-display-${filterId}`);
+    const editForm = document.getElementById(`warnlist-edit-form-${filterId}`);
+    
+    if (patternDisplay) patternDisplay.classList.remove('editing');
+    if (descriptionDisplay) {
+        const filter = warnlistFilters.find(f => f.id === filterId);
+        if (filter && filter.description) {
+            descriptionDisplay.style.display = 'block';
+        }
+    }
+    if (editForm) editForm.classList.remove('active');
+    
+    const filter = warnlistFilters.find(f => f.id === filterId);
+    if (filter) {
+        const patternInput = document.getElementById(`warnlist-edit-pattern-${filterId}`);
+        const descriptionInput = document.getElementById(`warnlist-edit-description-${filterId}`);
+        if (patternInput) patternInput.value = filter.pattern;
+        if (descriptionInput) descriptionInput.value = filter.description || '';
+    }
+}
+
+async function saveWarnlistEdit(filterId) {
+    const patternInput = document.getElementById(`warnlist-edit-pattern-${filterId}`);
+    const descriptionInput = document.getElementById(`warnlist-edit-description-${filterId}`);
+    
+    if (!patternInput) return;
+    
+    const pattern = patternInput.value.trim();
+    const description = descriptionInput ? descriptionInput.value.trim() : '';
+    
+    if (!pattern) {
+        showWarnlistStatus('Pattern cannot be empty', 'warning');
+        return;
+    }
+    
+    // Validate regex
+    try {
+        new RegExp(pattern);
+    } catch (e) {
+        showWarnlistStatus('Invalid regex pattern: ' + e.message, 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/regex-filters/warnlist/${filterId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pattern, description })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to update warn-list filter');
+        }
+        
+        const data = await response.json();
+        const index = warnlistFilters.findIndex(f => f.id === filterId);
+        if (index !== -1) {
+            warnlistFilters[index] = data.filter;
+        }
+        
+        renderWarnlistList();
+        applyWarnlistToCurrentData();
+        showWarnlistStatus('Warn-list filter updated successfully', 'info');
+    } catch (error) {
+        showWarnlistStatus('Error updating warn-list filter: ' + error.message, 'warning');
+    }
+}
+
+async function deleteWarnlist(filterId) {
+    if (!confirm('Are you sure you want to delete this warn-list filter?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/regex-filters/warnlist/${filterId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to delete warn-list filter');
+        }
+        
+        warnlistFilters = warnlistFilters.filter(f => f.id !== filterId);
+        
+        renderWarnlistList();
+        applyWarnlistToCurrentData();
+        showWarnlistStatus('Warn-list filter deleted successfully', 'info');
+    } catch (error) {
+        alert('Error deleting warn-list filter: ' + error.message);
+    }
+}
+
+function applyWarnlistToCurrentData() {
+    if (!currentData) return;
+    
+    // Remove existing warn-list highlighting
+    document.querySelectorAll('tr.warnlist-match').forEach(row => {
+        row.classList.remove('warnlist-match');
+    });
+    
+    if (warnlistFilters.length === 0) {
+        showWarnlistStatus('', '');
+        return;
+    }
+    
+    // Compile regex patterns
+    const patterns = warnlistFilters.map(f => {
+        try {
+            return new RegExp(f.pattern);
+        } catch (e) {
+            console.error(`Invalid regex pattern: ${f.pattern}`, e);
+            return null;
+        }
+    }).filter(p => p !== null);
+    
+    if (patterns.length === 0) {
+        showWarnlistStatus('No valid warn-list regex patterns', 'warning');
+        return;
+    }
+    
+    // Apply warn-list highlighting to table rows
+    const rows = document.querySelectorAll('.traffic-table tbody tr');
+    let matchCount = 0;
+    
+    rows.forEach(row => {
+        const ipCell = row.querySelector('td:nth-child(2) code');
+        if (!ipCell) return;
+        
+        // Extract all relevant fields
+        const ip = ipCell.textContent;
+        const typeCell = row.querySelector('td:nth-child(3) .ip-type');
+        const type = typeCell ? typeCell.textContent : '';
+        const domainCell = row.querySelector('td:nth-child(4)');
+        const domain = domainCell ? domainCell.textContent : '';
+        const ispCell = row.querySelector('td:nth-child(5)');
+        const isp = ispCell ? ispCell.textContent : '';
+        const portsCell = row.querySelector('td:nth-child(8)');
+        const ports = portsCell ? portsCell.textContent : '';
+        const processesCell = row.querySelector('td:nth-child(9)');
+        const processes = processesCell ? processesCell.textContent : '';
+        
+        // Check if any pattern matches any field
+        const matches = patterns.some(pattern => 
+            pattern.test(ip) || 
+            pattern.test(type) || 
+            pattern.test(domain) || 
+            pattern.test(isp) ||
+            pattern.test(ports) ||
+            pattern.test(processes)
+        );
+        
+        if (matches) {
+            row.classList.add('warnlist-match');
+            matchCount++;
+        }
+    });
+    
+    if (matchCount > 0) {
+        showWarnlistStatus(
+            `⚠️ ${matchCount} traffic ${matchCount === 1 ? 'entry' : 'entries'} matched warn-list filters`,
+            'warning'
+        );
+    } else {
+        showWarnlistStatus('No traffic matched warn-list filters', 'info');
+    }
+}
+
+function showWarnlistStatus(message, type) {
+    const statusDiv = document.getElementById('warnlist-status');
+    if (!message) {
+        statusDiv.innerHTML = '';
+        return;
+    }
+    statusDiv.innerHTML = `<div class="filter-status ${type}">${message}</div>`;
+}
+
 // Page-specific initialization
 window.addEventListener('DOMContentLoaded', async () => {
+    // Load filters immediately on page load
+    await Promise.all([
+        loadRegexFilters(),
+        loadWarnlistFilters()
+    ]);
+    
     const urlParams = new URLSearchParams(window.location.search);
     const beginParam = urlParams.get('begin');
     const endParam = urlParams.get('end');

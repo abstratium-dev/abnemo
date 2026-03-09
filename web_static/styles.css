@@ -92,6 +92,11 @@
   --color-overlay: rgba(0, 0, 0, 0.05);
   --color-overlay-danger: rgba(234, 67, 53, 0.1);
   --color-overlay-error: #fee;
+  
+  /* Warn-list colors */
+  --color-warnlist-bg: #ffebee;
+  --color-warnlist-border: #ffcdd2;
+  --color-warnlist-text: #c62828;
 }
 
 /* Dark mode theme */
@@ -188,6 +193,11 @@
   --color-overlay: rgba(255, 255, 255, 0.05);
   --color-overlay-danger: rgba(255, 107, 107, 0.15);
   --color-overlay-error: #3a1f1e;
+  
+  /* Warn-list colors */
+  --color-warnlist-bg: #3a1f1e;
+  --color-warnlist-border: #5a2f2e;
+  --color-warnlist-text: #ff8a80;
 }
 
 /* ===== GLOBAL STYLES ===== */
@@ -1327,6 +1337,17 @@ button:disabled {
   background-color: var(--color-info-bg);
   border: 1px solid var(--color-info);
   color: var(--color-text-primary);
+}
+
+/* ===== WARN-LIST ROW HIGHLIGHTING ===== */
+tr.warnlist-match {
+  background-color: var(--color-warnlist-bg) !important;
+  border-left: 3px solid var(--color-warnlist-border);
+}
+
+tr.warnlist-match:hover {
+  background-color: var(--color-warnlist-bg) !important;
+  opacity: 0.9;
 }
 
 .footer {

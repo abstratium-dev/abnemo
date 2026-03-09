@@ -34,6 +34,18 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
 
 - test traffic directions
 
+- README.md should describe
+  - ABNEMO_CONFIG_DIR
+  - how to configure where traffic goes
+  - email for warn-list
+    - ABNEMO_SMTP_HOST
+    - ABNEMO_SMTP_PORT
+    - ABNEMO_SMTP_USERNAME
+    - ABNEMO_SMTP_PASSWORD
+    - ABNEMO_SMTP_FROM
+    - ABNEMO_SMTP_TO
+    - ABNEMO_SMTP_TLS
+
 - read and verify: VERIFICATION_GUIDE.md
   - write a program that does this verification for us
 
