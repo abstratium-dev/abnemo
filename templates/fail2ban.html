@@ -10,18 +10,11 @@
 {% endblock %}
 
 {% block extra_styles %}
-.card {
-    background: white;
-    border-radius: 12px;
-    padding: 30px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
 .tabs {
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
-    border-bottom: 2px solid #e0e0e0;
+    border-bottom: 2px solid var(--color-border-primary);
 }
 
 .tab {
@@ -32,17 +25,17 @@
     cursor: pointer;
     font-size: 1em;
     font-weight: 500;
-    color: #666;
+    color: var(--color-text-secondary);
     transition: all 0.2s;
 }
 
 .tab:hover {
-    color: #667eea;
+    color: var(--color-primary);
 }
 
 .tab.active {
-    color: #667eea;
-    border-bottom-color: #667eea;
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
 }
 
 .tab-content {
@@ -57,33 +50,66 @@
     margin-bottom: 20px;
 }
 
+.controls p {
+    color: var(--color-text-secondary);
+}
+
+.controls code {
+    background: var(--color-bg-tertiary);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--color-text-primary);
+}
+
 textarea {
     width: 100%;
     min-height: 200px;
     padding: 15px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--color-border-primary);
     border-radius: 8px;
     font-family: 'Courier New', monospace;
     font-size: 0.9em;
     resize: vertical;
     margin-bottom: 15px;
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
 }
 
 textarea:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--color-primary);
 }
 
 #diagram-container {
     margin-top: 20px;
     padding: 20px;
-    background: #f8f9fa;
+    background: var(--color-bg-secondary);
     border-radius: 8px;
     min-height: 400px;
+    border: 1px solid var(--color-border-primary);
 }
 
 .hidden {
     display: none;
+}
+
+#legend {
+    margin-top: 20px;
+    padding: 20px;
+    background: var(--color-bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--color-border-primary);
+}
+
+#legend h3 {
+    margin-bottom: 15px;
+    color: var(--color-primary);
+}
+
+#legend .legend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
 }
 {% endblock %}
 
@@ -114,9 +140,9 @@ textarea:focus {
     
     <div id="diagram-container" class="hidden"></div>
     
-    <div id="legend" class="hidden" style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-        <h3 style="margin-bottom: 15px; color: #667eea;">Legend</h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+    <div id="legend" class="hidden">
+        <h3>Legend</h3>
+        <div class="legend-grid">
             <div><span style="color: #3498DB;">🔒</span> <strong>Jail</strong> - Protection rule</div>
             <div><span style="color: #E74C3C;">🔨</span> <strong>Action</strong> - Ban action (iptables, etc.)</div>
             <div><span style="color: #27AE60;">✅</span> <strong>Ignore</strong> - Whitelisted IPs</div>

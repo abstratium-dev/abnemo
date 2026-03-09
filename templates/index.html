@@ -7,11 +7,11 @@
 
 {% block extra_styles %}
 .controls {
-    background: white;
+    background: var(--color-bg-primary);
     border-radius: 12px;
     padding: 25px;
     margin-bottom: 20px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px var(--shadow-sm);
 }
 
 .time-controls {
@@ -29,21 +29,23 @@
 label {
     font-weight: 600;
     margin-bottom: 8px;
-    color: #333;
+    color: var(--color-text-primary);
     font-size: 0.9em;
 }
 
 input[type="datetime-local"] {
     padding: 12px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--color-border-primary);
     border-radius: 8px;
     font-size: 1em;
     transition: border-color 0.3s;
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
 }
 
 input[type="datetime-local"]:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--color-primary);
 }
 
 .quick-ranges {
@@ -54,22 +56,23 @@ input[type="datetime-local"]:focus {
 }
 
 .quick-btn {
-    background: #f0f0f0;
-    color: #333;
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
     padding: 8px 16px;
     font-size: 0.9em;
+    border: 1px solid var(--color-border-secondary);
 }
 
 .quick-btn:hover {
-    background: #e0e0e0;
+    background: var(--color-bg-tertiary);
 }
 
 .stats {
-    background: white;
+    background: var(--color-bg-primary);
     border-radius: 12px;
     padding: 25px;
     margin-bottom: 20px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px var(--shadow-sm);
 }
 
 .stats-grid {
@@ -79,7 +82,7 @@ input[type="datetime-local"]:focus {
 }
 
 .stat-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--color-primary);
     color: white;
     padding: 20px;
     border-radius: 8px;
@@ -98,10 +101,10 @@ input[type="datetime-local"]:focus {
 }
 
 .traffic-table {
-    background: white;
+    background: var(--color-bg-primary);
     border-radius: 12px;
     padding: 25px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px var(--shadow-sm);
     overflow-x: auto;
 }
 
@@ -111,21 +114,22 @@ table {
 }
 
 th {
-    background: #f8f9fa;
+    background: var(--color-bg-tertiary);
     padding: 15px;
     text-align: left;
     font-weight: 600;
-    color: #333;
-    border-bottom: 2px solid #e0e0e0;
+    color: var(--color-text-primary);
+    border-bottom: 2px solid var(--color-border-primary);
 }
 
 td {
     padding: 15px;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--color-border-light);
+    color: var(--color-text-primary);
 }
 
 tr:hover {
-    background: #f8f9fa;
+    background: var(--color-bg-hover);
 }
 
 .ip-type {
@@ -137,24 +141,24 @@ tr:hover {
 }
 
 .ip-type.public {
-    background: #e3f2fd;
-    color: #1976d2;
+    background: var(--color-badge-primary-bg);
+    color: var(--color-badge-primary-text);
 }
 
 .ip-type.private {
-    background: #f3e5f5;
-    color: #7b1fa2;
+    background: var(--color-badge-secondary-bg);
+    color: var(--color-badge-secondary-text);
 }
 
 .ip-type.multicast {
-    background: #fff3e0;
-    color: #f57c00;
+    background: var(--color-warning-bg);
+    color: var(--color-warning);
 }
 
 .no-data {
     text-align: center;
     padding: 40px;
-    color: #999;
+    color: var(--color-text-tertiary);
     font-size: 1.1em;
 }
 
@@ -166,7 +170,7 @@ th.sortable {
 }
 
 th.sortable:hover {
-    background: #e8e9ea;
+    background: var(--color-bg-hover);
 }
 
 th.sortable::after {
@@ -187,13 +191,13 @@ th.sortable.desc::after {
 }
 
 .process-link {
-    color: #667eea;
+    color: var(--color-link-primary);
     cursor: pointer;
     text-decoration: underline;
 }
 
 .process-link:hover {
-    color: #764ba2;
+    color: var(--color-link-hover);
 }
 
 .process-container {
@@ -201,8 +205,8 @@ th.sortable.desc::after {
     margin-left: 6px;
     padding: 2px 8px;
     border-radius: 999px;
-    background: #e3f2fd;
-    color: #0d47a1;
+    background: var(--color-badge-primary-bg);
+    color: var(--color-badge-primary-text);
     font-size: 0.75em;
     font-weight: 600;
 }
@@ -225,7 +229,7 @@ th.sortable.desc::after {
 }
 
 .modal-content {
-    background: white;
+    background: var(--color-bg-primary);
     border-radius: 12px;
     padding: 30px;
     max-width: 800px;
@@ -241,23 +245,24 @@ th.sortable.desc::after {
     right: 15px;
     font-size: 24px;
     cursor: pointer;
-    color: #999;
+    color: var(--color-text-tertiary);
     background: none;
     border: none;
     padding: 5px 10px;
 }
 
 .modal-close:hover {
-    color: #333;
+    color: var(--color-text-primary);
 }
 
 .modal-content pre {
-    background: #f5f5f5;
+    background: var(--color-bg-secondary);
     padding: 15px;
     border-radius: 8px;
     overflow-x: auto;
     font-family: 'Courier New', monospace;
     font-size: 0.9em;
+    color: var(--color-text-primary);
 }
 
 @media (max-width: 768px) {
@@ -312,7 +317,7 @@ th.sortable.desc::after {
     </div>
     
     <div class="traffic-table">
-        <h2 style="margin-bottom: 20px; color: #333;">Traffic Details</h2>
+        <h2 style="margin-bottom: 20px; color: var(--color-text-primary);">Traffic Details</h2>
         <div id="table-container">
             <div class="loading">Loading data...</div>
         </div>

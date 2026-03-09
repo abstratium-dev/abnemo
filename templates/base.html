@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Abnemo - Network Monitor{% endblock %}</title>
+    <link rel="stylesheet" href="/styles.css">
     {% block extra_head %}{% endblock %}
     <style>
         * {
@@ -14,79 +15,115 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 0;
+            margin: 0;
         }
         
-        .container {
+        .app-container {
+            max-width: 100%;
+            margin: 0;
+        }
+        
+        header {
+            background: var(--color-bg-primary);
+            border-bottom: 1px solid var(--color-border-primary);
+            padding: 0;
+            margin-bottom: 0;
+            box-shadow: 0 2px 4px var(--shadow-sm);
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 24px;
+            gap: 20px;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .logo {
+            height: 32px;
+            width: auto;
+        }
+        
+        .brand-name {
+            font-weight: 700;
+            font-size: 1.1em;
+            color: var(--color-text-primary);
+            letter-spacing: 0.5px;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-size: 0.95em;
+        }
+        
+        .header-right a {
+            color: var(--color-link-primary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        .header-right a:hover:not(.inactive-link) {
+            color: var(--color-link-hover);
+            text-decoration: underline;
+        }
+        
+        .header-right a.inactive-link {
+            color: var(--color-text-tertiary);
+            cursor: default;
+            pointer-events: none;
+        }
+        
+        .theme-toggle-btn {
+            background: transparent;
+            border: 1px solid var(--color-border-secondary);
+            border-radius: 4px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.2s ease;
+            color: var(--color-text-primary);
+        }
+        
+        .theme-toggle-btn:hover {
+            background: var(--color-bg-secondary);
+            border-color: var(--color-primary);
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .theme-toggle-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .main-content {
+            padding: 20px;
             max-width: 1400px;
             margin: 0 auto;
         }
         
-        header {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        
-        h1 {
-            color: #667eea;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-        
-        .subtitle {
-            color: #666;
-            font-size: 1.1em;
-        }
-        
-        .nav-button {
-            display: inline-block;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-decoration: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: transform 0.2s, box-shadow 0.2s;
-            margin-right: 10px;
-        }
-        
-        .nav-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        .nav-links {
-            margin-top: 15px;
-        }
-        
-        .nav-links a {
-            color: #667eea;
-            text-decoration: none;
-            margin-right: 20px;
-            font-weight: 500;
-            transition: color 0.2s;
-        }
-        
-        .nav-links a:hover {
-            color: #764ba2;
-        }
-        
         .auth-card {
             display: none;
-            background: rgba(255, 255, 255, 0.95);
+            background: var(--color-bg-primary);
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 6px var(--shadow-sm);
             justify-content: space-between;
             align-items: center;
             gap: 16px;
             flex-wrap: wrap;
+            border: 1px solid var(--color-border-primary);
         }
 
         .auth-card.active {
@@ -94,7 +131,7 @@
         }
 
         .auth-card strong {
-            color: #333;
+            color: var(--color-text-primary);
         }
 
         .auth-actions {
@@ -103,60 +140,20 @@
         }
 
         .auth-details {
-            color: #555;
+            color: var(--color-text-secondary);
             font-size: 0.95em;
             margin-top: 6px;
         }
 
-        button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 8px;
-            font-size: 1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-        
-        button:active {
-            transform: translateY(0);
-        }
-
-        .button-secondary {
-            background: #f8f9fa;
-            color: #333;
-            border: 1px solid #dcdfe6;
-        }
-
-        .button-secondary:hover {
-            background: #edf1f7;
-            box-shadow: none;
-        }
-
-        .error {
-            background: #ffebee;
-            color: #c62828;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-
         @media (max-width: 768px) {
-            h1 {
-                font-size: 1.8em;
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .header-right {
+                width: 100%;
+                justify-content: flex-start;
             }
         }
 
@@ -164,41 +161,92 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="app-container">
         <header>
-            <h1>{% block header_title %}🌐 Abnemo{% endblock %}</h1>
-            <p class="subtitle">{% block header_subtitle %}Network Traffic Monitor & Analyzer{% endblock %}</p>
-            <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
-                <h3 style="color: #667eea; margin-bottom: 12px; font-size: 1.1em;">🛠️ Navigation</h3>
-                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                    <a href="/" class="nav-button">
-                        🌐 Network Monitor
-                    </a>
-                    <a href="/iptables" class="nav-button">
-                        🔥 iptables Firewall
-                    </a>
-                    <a href="/fail2ban" class="nav-button">
-                        🛡️ fail2ban Protection
-                    </a>
+            <div class="header">
+                <div class="header-left">
+                    <span class="brand-name">{% block brand_name %}ABNEMO{% endblock %}</span>
+                </div>
+                <div class="header-right">
+                    <button class="theme-toggle-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode" aria-label="Toggle theme">
+                        <span id="theme-icon">🌙</span>
+                    </button>
+                    <span>&nbsp;|&nbsp;</span>
+                    <a href="/" id="network-link">🌐 network</a>
+                    <span>&nbsp;|&nbsp;</span>
+                    <a href="/iptables" id="iptables-link">🔥 iptables</a>
+                    <span>&nbsp;|&nbsp;</span>
+                    <a href="/fail2ban" id="fail2ban-link">🛡️ fail2ban</a>
+                    <span id="auth-separator" style="display: none;">&nbsp;|&nbsp;</span>
+                    <a href="#" id="auth-link" style="display: none;" onclick="handleAuthClick(event)"></a>
                 </div>
             </div>
         </header>
 
-        <div class="auth-card" id="auth-card">
-            <div>
-                <div id="auth-status-text"><strong>Authentication:</strong> Checking…</div>
-                <div class="auth-details" id="auth-user-details"></div>
-            </div>
-            <div class="auth-actions">
-                <button id="auth-login-btn" class="button-secondary" onclick="startLogin()">Sign In</button>
-                <button id="auth-logout-btn" class="button-secondary" onclick="logout()">Sign Out</button>
-            </div>
+        <div class="main-content">
+            {% block content %}{% endblock %}
         </div>
-
-        {% block content %}{% endblock %}
     </div>
 
     <script>
+        // ===== THEME MANAGEMENT =====
+        function initTheme() {
+            const savedTheme = localStorage.getItem('abnemo-theme');
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+            applyTheme(theme);
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('abnemo-theme', theme);
+            updateThemeIcon();
+        }
+
+        function updateThemeIcon() {
+            const theme = document.documentElement.getAttribute('data-theme') || 'light';
+            const icon = document.getElementById('theme-icon');
+            const button = document.getElementById('theme-toggle');
+            if (icon) {
+                icon.textContent = theme === 'light' ? '🌙' : '☀️';
+            }
+            if (button) {
+                const action = theme === 'light' ? 'dark' : 'light';
+                button.setAttribute('title', `Switch to ${action} mode`);
+                button.setAttribute('aria-label', `Switch to ${action} mode`);
+            }
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            applyTheme(newTheme);
+        }
+
+        // ===== NAVIGATION ACTIVE STATE =====
+        function updateActiveNavLink() {
+            const path = window.location.pathname;
+            const links = {
+                '/': 'network-link',
+                '/iptables': 'iptables-link',
+                '/fail2ban': 'fail2ban-link'
+            };
+            
+            // Remove inactive-link from all
+            Object.values(links).forEach(id => {
+                const link = document.getElementById(id);
+                if (link) link.classList.remove('inactive-link');
+            });
+            
+            // Add inactive-link to current page
+            const currentLinkId = links[path];
+            if (currentLinkId) {
+                const currentLink = document.getElementById(currentLinkId);
+                if (currentLink) currentLink.classList.add('inactive-link');
+            }
+        }
+
+        // ===== AUTHENTICATION =====
         let authState = { oauth_enabled: false, authenticated: true, user: null, required_group: null, required_groups: null, has_access: true };
 
         function updateAppVisibility() {
@@ -278,47 +326,42 @@
         }
 
         function updateAuthCard() {
-            const card = document.getElementById('auth-card');
-            const statusText = document.getElementById('auth-status-text');
-            const userDetails = document.getElementById('auth-user-details');
-            const loginBtn = document.getElementById('auth-login-btn');
-            const logoutBtn = document.getElementById('auth-logout-btn');
-
-            if (!card) {
-                return;
-            }
+            const authLink = document.getElementById('auth-link');
+            const authSeparator = document.getElementById('auth-separator');
 
             if (!authState.oauth_enabled) {
-                card.classList.remove('active');
+                if (authLink) authLink.style.display = 'none';
+                if (authSeparator) authSeparator.style.display = 'none';
                 return;
             }
 
-            card.classList.add('active');
-            if (authState.authenticated) {
-                const displayName = (authState.user && (authState.user.name || authState.user.email || authState.user.sub)) || 'Authenticated user';
-                const emailDetail = authState.user?.email ? `Email: ${authState.user.email}` : '';
-                if (authState.has_access) {
-                    statusText.innerHTML = `<strong>Authentication:</strong> Signed in as ${displayName}`;
-                    userDetails.textContent = emailDetail;
-                    loginBtn.style.display = 'none';
-                    logoutBtn.style.display = 'inline-block';
-                    clearError();
+            if (authLink && authSeparator) {
+                authSeparator.style.display = '';
+                authLink.style.display = '';
+                
+                if (authState.authenticated && authState.has_access) {
+                    const displayName = (authState.user && (authState.user.name || authState.user.email || authState.user.sub)) || 'User';
+                    authLink.textContent = `Sign out (${displayName})`;
+                    authLink.title = 'Sign out';
+                } else if (authState.authenticated && !authState.has_access) {
+                    const displayName = (authState.user && (authState.user.name || authState.user.email || authState.user.sub)) || 'User';
+                    authLink.textContent = `⚠️ ${displayName} (no access)`;
+                    authLink.title = 'Insufficient permissions';
                 } else {
-                    statusText.innerHTML = `<strong>Authentication:</strong> Signed in as ${displayName} (insufficient permissions)`;
-                    const requiredGroupLabel = authState.required_groups && authState.required_groups.length > 0
-                        ? `You must belong to one of the following groups to view monitoring data: ${authState.required_groups.join(', ')}`
-                        : 'Your account is not authorized to view monitoring data.';
-                    userDetails.textContent = `${requiredGroupLabel}${emailDetail ? ' — ' + emailDetail : ''}`;
-                    loginBtn.style.display = 'inline-block';
-                    logoutBtn.style.display = 'inline-block';
+                    authLink.textContent = 'Sign in';
+                    authLink.title = 'Sign in to access monitoring data';
                 }
-            } else {
-                statusText.innerHTML = '<strong>Authentication:</strong> Sign in required';
-                userDetails.textContent = 'Please authenticate via Abstrauth to access traffic data.';
-                loginBtn.style.display = 'inline-block';
-                logoutBtn.style.display = 'none';
             }
             updateAppVisibility();
+        }
+
+        function handleAuthClick(event) {
+            event.preventDefault();
+            if (authState.authenticated) {
+                logout();
+            } else {
+                startLogin();
+            }
         }
 
         function startLogin() {
@@ -338,8 +381,10 @@
             showError('You have been signed out. Please sign in again to load data.');
         }
 
-        // Initialize auth on page load
+        // Initialize on page load
         window.addEventListener('DOMContentLoaded', async () => {
+            initTheme();
+            updateActiveNavLink();
             await fetchAuthStatus();
         });
 
