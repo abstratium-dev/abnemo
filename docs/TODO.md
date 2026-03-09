@@ -30,6 +30,7 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
 - create SBOM
 - what other legal requirements are there?
 
+- refactor web_server.py so that it is smaller and multiple files
 
 - test traffic directions
 

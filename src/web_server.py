@@ -70,6 +70,88 @@ def parse_log_timestamp(timestamp_str):
 logger = logging.getLogger(__name__)
 
 
+def get_regex_filters_file(log_dir):
+    """Get the path to the regex filters JSON file"""
+    return os.path.join(log_dir, 'regex_filters.json')
+
+
+def load_regex_filters(log_dir):
+    """Load regex filters from JSON file"""
+    filters_file = get_regex_filters_file(log_dir)
+    if not os.path.exists(filters_file):
+        return []
+    
+    try:
+        with open(filters_file, 'r') as f:
+            data = json.load(f)
+            return data.get('filters', [])
+    except Exception as e:
+        logger.error(f'Error loading regex filters: {e}')
+        return []
+
+
+def save_regex_filter(log_dir, filter_data):
+    """Save a new regex filter and return its ID"""
+    filters = load_regex_filters(log_dir)
+    
+    # Generate a unique ID
+    import uuid
+    filter_id = str(uuid.uuid4())
+    filter_data['id'] = filter_id
+    
+    filters.append(filter_data)
+    
+    filters_file = get_regex_filters_file(log_dir)
+    os.makedirs(log_dir, exist_ok=True)
+    
+    with open(filters_file, 'w') as f:
+        json.dump({'filters': filters}, f, indent=2)
+    
+    return filter_id
+
+
+def update_regex_filter(log_dir, filter_id, update_data):
+    """Update an existing regex filter"""
+    filters = load_regex_filters(log_dir)
+    
+    for filter_obj in filters:
+        if filter_obj.get('id') == filter_id:
+            # Update only provided fields
+            if update_data.get('pattern') is not None:
+                filter_obj['pattern'] = update_data['pattern']
+            if update_data.get('description') is not None:
+                filter_obj['description'] = update_data['description']
+            if update_data.get('user_email') is not None:
+                filter_obj['user_email'] = update_data['user_email']
+            if update_data.get('updated_at') is not None:
+                filter_obj['updated_at'] = update_data['updated_at']
+            
+            filters_file = get_regex_filters_file(log_dir)
+            with open(filters_file, 'w') as f:
+                json.dump({'filters': filters}, f, indent=2)
+            
+            return filter_obj
+    
+    return None
+
+
+def delete_regex_filter(log_dir, filter_id):
+    """Delete a regex filter"""
+    filters = load_regex_filters(log_dir)
+    
+    original_count = len(filters)
+    filters = [f for f in filters if f.get('id') != filter_id]
+    
+    if len(filters) == original_count:
+        return False
+    
+    filters_file = get_regex_filters_file(log_dir)
+    with open(filters_file, 'w') as f:
+        json.dump({'filters': filters}, f, indent=2)
+    
+    return True
+
+
 def get_logs_in_range(log_dir, begin_time, end_time):
     """Get aggregated traffic data from logs within time range.
     Reads the timestamp field inside each JSON file to determine if it falls within range.
@@ -825,6 +907,103 @@ def create_app(log_dir):
                 'error': 'Failed to generate visualization',
                 'details': str(e)
             }), 500
+
+    @app.route('/api/regex-filters', methods=['GET'])
+    def api_get_regex_filters():
+        """Get all regex filters"""
+        auth_error = _ensure_authenticated_response()
+        if auth_error:
+            return auth_error
+        
+        try:
+            filters = load_regex_filters(log_dir)
+            return jsonify({'filters': filters})
+        except Exception as e:
+            logger.error(f'Error loading regex filters: {e}', exc_info=True)
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/regex-filters', methods=['POST'])
+    def api_create_regex_filter():
+        """Create a new regex filter"""
+        auth_error = _ensure_authenticated_response()
+        if auth_error:
+            return auth_error
+        
+        try:
+            data = request.get_json()
+            if not data or 'pattern' not in data:
+                return jsonify({'error': 'Missing pattern field'}), 400
+            
+            # Get user email from session
+            session = getattr(g, 'session_data', {})
+            user = session.get('user', {})
+            user_email = user.get('email', 'anonymous')
+            
+            filter_data = {
+                'pattern': data['pattern'],
+                'description': data.get('description', ''),
+                'user_email': user_email,
+                'created_at': datetime.now(timezone.utc).isoformat(),
+                'updated_at': datetime.now(timezone.utc).isoformat()
+            }
+            
+            filter_id = save_regex_filter(log_dir, filter_data)
+            filter_data['id'] = filter_id
+            
+            return jsonify({'filter': filter_data}), 201
+        except Exception as e:
+            logger.error(f'Error creating regex filter: {e}', exc_info=True)
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/regex-filters/<filter_id>', methods=['PUT'])
+    def api_update_regex_filter(filter_id):
+        """Update an existing regex filter"""
+        auth_error = _ensure_authenticated_response()
+        if auth_error:
+            return auth_error
+        
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'Missing request body'}), 400
+            
+            # Get user email from session
+            session = getattr(g, 'session_data', {})
+            user = session.get('user', {})
+            user_email = user.get('email', 'anonymous')
+            
+            update_data = {
+                'pattern': data.get('pattern'),
+                'description': data.get('description'),
+                'user_email': user_email,
+                'updated_at': datetime.now(timezone.utc).isoformat()
+            }
+            
+            updated_filter = update_regex_filter(log_dir, filter_id, update_data)
+            if not updated_filter:
+                return jsonify({'error': 'Filter not found'}), 404
+            
+            return jsonify({'filter': updated_filter})
+        except Exception as e:
+            logger.error(f'Error updating regex filter: {e}', exc_info=True)
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/regex-filters/<filter_id>', methods=['DELETE'])
+    def api_delete_regex_filter(filter_id):
+        """Delete a regex filter"""
+        auth_error = _ensure_authenticated_response()
+        if auth_error:
+            return auth_error
+        
+        try:
+            success = delete_regex_filter(log_dir, filter_id)
+            if not success:
+                return jsonify({'error': 'Filter not found'}), 404
+            
+            return jsonify({'success': True})
+        except Exception as e:
+            logger.error(f'Error deleting regex filter: {e}', exc_info=True)
+            return jsonify({'error': str(e)}), 500
 
     return app
 

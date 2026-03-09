@@ -270,6 +270,261 @@ th.sortable.desc::after {
         grid-template-columns: 1fr;
     }
 }
+
+.filter-section {
+    background: var(--color-bg-primary);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px var(--shadow-sm);
+}
+
+.filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.filter-header h3 {
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.filter-toggle-icon {
+    font-size: 1.2em;
+    transition: transform 0.3s;
+}
+
+.filter-toggle-icon.expanded {
+    transform: rotate(180deg);
+}
+
+.filter-content {
+    display: none;
+    margin-top: 20px;
+}
+
+.filter-content.expanded {
+    display: block;
+}
+
+.filter-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    align-items: center;
+}
+
+.filter-master-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 15px;
+    background: var(--color-bg-secondary);
+    border-radius: 8px;
+}
+
+.filter-list {
+    margin-top: 15px;
+}
+
+.filter-item {
+    background: var(--color-bg-secondary);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 2px solid var(--color-border-primary);
+}
+
+.filter-item.editing {
+    border-color: var(--color-primary);
+}
+
+.filter-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.filter-item-pattern {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    flex: 1;
+}
+
+.filter-item-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.filter-item-actions button {
+    padding: 6px 12px;
+    font-size: 0.85em;
+}
+
+.filter-item-description {
+    color: var(--color-text-secondary);
+    font-size: 0.9em;
+    margin-bottom: 8px;
+}
+
+.filter-item-meta {
+    font-size: 0.8em;
+    color: var(--color-text-tertiary);
+}
+
+.filter-form {
+    background: var(--color-bg-secondary);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.filter-form input[type="text"],
+.filter-form textarea {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid var(--color-border-primary);
+    border-radius: 8px;
+    font-size: 1em;
+    margin-bottom: 10px;
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+}
+
+.filter-form textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.filter-form input[type="text"]:focus,
+.filter-form textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.filter-form-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--color-border-primary);
+    transition: 0.3s;
+    border-radius: 24px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+    background-color: var(--color-primary);
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(26px);
+}
+
+.filter-status {
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-top: 10px;
+    font-size: 0.9em;
+}
+
+.filter-status.info {
+    background: var(--color-badge-primary-bg);
+    color: var(--color-badge-primary-text);
+}
+
+.filter-status.warning {
+    background: var(--color-warning-bg);
+    color: var(--color-warning);
+}
+
+tr.filter-hidden {
+    display: none;
+}
+
+.filter-item-pattern.editing {
+    display: none;
+}
+
+.filter-item-edit-form {
+    display: none;
+}
+
+.filter-item-edit-form.active {
+    display: block;
+    margin-top: 10px;
+}
+
+.filter-item-edit-form input[type="text"],
+.filter-item-edit-form textarea {
+    width: 100%;
+    padding: 8px;
+    border: 2px solid var(--color-border-primary);
+    border-radius: 6px;
+    font-size: 0.9em;
+    margin-bottom: 8px;
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-family: 'Courier New', monospace;
+}
+
+.filter-item-edit-form textarea {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    resize: vertical;
+    min-height: 50px;
+}
+
+.filter-item-edit-form input[type="text"]:focus,
+.filter-item-edit-form textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.filter-item-edit-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.filter-item-edit-actions button {
+    padding: 6px 12px;
+    font-size: 0.85em;
+}
 {% endblock %}
 
 {% block content %}
@@ -299,18 +554,63 @@ th.sortable.desc::after {
     
     <div id="error-container"></div>
     
+    <!-- Regex Filter Management Section -->
+    <div class="filter-section">
+        <div class="filter-header" onclick="toggleFilterSection()">
+            <h3>🔍 Traffic Filters (Hide Matching)</h3>
+            <span class="filter-toggle-icon" id="filter-toggle-icon">▼</span>
+        </div>
+        <div class="filter-content" id="filter-content">
+            <div class="filter-controls">
+                <div class="filter-master-toggle">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="filter-master-toggle" onchange="toggleAllFilters()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Enable All Filters (Hide Matching Traffic)</span>
+                </div>
+                <button onclick="showAddFilterForm()">+ Add Filter</button>
+            </div>
+            
+            <div id="add-filter-form" class="filter-form" style="display: none;">
+                <h4 style="margin-bottom: 10px; color: var(--color-text-primary);">Add New Filter (Hide Matching Traffic)</h4>
+                <input type="text" id="new-filter-pattern" placeholder="Regex pattern (e.g., ^192\.168\..* to hide local IPs)" />
+                <textarea id="new-filter-description" placeholder="Description (e.g., 'Hide local network traffic')"></textarea>
+                <div class="filter-form-actions">
+                    <button onclick="saveNewFilter()">Save</button>
+                    <button class="quick-btn" onclick="cancelAddFilter()">Cancel</button>
+                </div>
+            </div>
+            
+            <div id="filter-status"></div>
+            
+            <div class="filter-list" id="filter-list">
+                <div class="loading">Loading filters...</div>
+            </div>
+        </div>
+    </div>
+    
     <div class="stats" id="stats-container" style="display: none;">
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-value" id="stat-ips">0</div>
+                <div class="stat-value">
+                    <span id="stat-ips">0</span>
+                    <span id="stat-ips-filtered" style="display: none; font-size: 0.7em; color: var(--color-text-secondary);"></span>
+                </div>
                 <div class="stat-label">Unique IPs</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value" id="stat-bytes">0</div>
+                <div class="stat-value">
+                    <span id="stat-bytes">0</span>
+                    <span id="stat-bytes-filtered" style="display: none; font-size: 0.7em; color: var(--color-text-secondary);"></span>
+                </div>
                 <div class="stat-label">Total Bytes</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value" id="stat-packets">0</div>
+                <div class="stat-value">
+                    <span id="stat-packets">0</span>
+                    <span id="stat-packets-filtered" style="display: none; font-size: 0.7em; color: var(--color-text-secondary);"></span>
+                </div>
                 <div class="stat-label">Total Packets</div>
             </div>
         </div>
@@ -488,6 +788,9 @@ function displayData(data) {
     document.querySelectorAll('th.sortable').forEach(th => {
         th.addEventListener('click', () => sortTable(th.dataset.sort));
     });
+    
+    // Apply filters to newly rendered data
+    applyFiltersToCurrentData();
 }
 
 let currentSort = { column: 'bytes', direction: 'desc' };
@@ -624,6 +927,9 @@ function rebuildTable(sortedIps) {
             th.classList.add(currentSort.direction);
         }
     });
+    
+    // Apply filters to rebuilt table
+    applyFiltersToCurrentData();
 }
 
 async function showProcessDetails(pid) {
@@ -716,6 +1022,488 @@ document.addEventListener('keydown', (e) => {
         closeModal();
     }
 });
+
+// ========== REGEX FILTER MANAGEMENT ==========
+
+let regexFilters = [];
+let filterToggles = {}; // Track individual filter toggle states
+
+function getLocalStorageKey(pattern) {
+    // Create a safe key from the pattern
+    return 'filters_accepted_' + encodeURIComponent(pattern);
+}
+
+function loadToggleState(pattern) {
+    const key = getLocalStorageKey(pattern);
+    const stored = localStorage.getItem(key);
+    // Default to false (not hiding) if not set
+    return stored === 'true';
+}
+
+function saveToggleState(pattern, enabled) {
+    const key = getLocalStorageKey(pattern);
+    localStorage.setItem(key, enabled.toString());
+}
+
+function toggleFilterSection() {
+    const content = document.getElementById('filter-content');
+    const icon = document.getElementById('filter-toggle-icon');
+    content.classList.toggle('expanded');
+    icon.classList.toggle('expanded');
+    
+    if (content.classList.contains('expanded') && regexFilters.length === 0) {
+        loadRegexFilters();
+    }
+}
+
+async function loadRegexFilters() {
+    try {
+        const response = await fetch('/api/regex-filters');
+        if (!response.ok) {
+            throw new Error('Failed to load filters');
+        }
+        const data = await response.json();
+        regexFilters = data.filters || [];
+        
+        // Load toggle states from localStorage
+        regexFilters.forEach(filter => {
+            filterToggles[filter.id] = loadToggleState(filter.pattern);
+        });
+        
+        renderFilterList();
+        applyFiltersToCurrentData();
+    } catch (error) {
+        document.getElementById('filter-list').innerHTML = `<div class="error">Error loading filters: ${error.message}</div>`;
+    }
+}
+
+function renderFilterList() {
+    const container = document.getElementById('filter-list');
+    
+    if (regexFilters.length === 0) {
+        container.innerHTML = '<div class="no-data">No filters defined. Click "Add Filter" to create one.</div>';
+        return;
+    }
+    
+    let html = '';
+    regexFilters.forEach(filter => {
+        const isEnabled = filterToggles[filter.id] === true;
+        const createdDate = new Date(filter.created_at).toLocaleString();
+        const updatedDate = filter.updated_at ? new Date(filter.updated_at).toLocaleString() : createdDate;
+        
+        html += `
+            <div class="filter-item" id="filter-${filter.id}">
+                <div class="filter-item-header">
+                    <label class="toggle-switch">
+                        <input type="checkbox" ${isEnabled ? 'checked' : ''} onchange="toggleFilter('${filter.id}')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <div class="filter-item-pattern" id="pattern-display-${filter.id}">${escapeHtml(filter.pattern)}</div>
+                    <div class="filter-item-actions">
+                        <button onclick="editFilter('${filter.id}')">Edit</button>
+                        <button onclick="deleteFilter('${filter.id}')" class="quick-btn">Delete</button>
+                    </div>
+                </div>
+                ${filter.description ? `<div class="filter-item-description" id="description-display-${filter.id}">${escapeHtml(filter.description)}</div>` : `<div class="filter-item-description" id="description-display-${filter.id}" style="display:none;"></div>`}
+                <div class="filter-item-edit-form" id="edit-form-${filter.id}">
+                    <input type="text" id="edit-pattern-${filter.id}" value="${escapeHtml(filter.pattern)}" placeholder="Regex pattern" />
+                    <textarea id="edit-description-${filter.id}" placeholder="Description (optional)">${escapeHtml(filter.description || '')}</textarea>
+                    <div class="filter-item-edit-actions">
+                        <button onclick="saveFilterEdit('${filter.id}')">Save</button>
+                        <button class="quick-btn" onclick="cancelFilterEdit('${filter.id}')">Cancel</button>
+                    </div>
+                </div>
+                <div class="filter-item-meta">
+                    Created by ${escapeHtml(filter.user_email)} on ${createdDate}
+                    ${filter.updated_at && filter.updated_at !== filter.created_at ? ` • Updated ${updatedDate}` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showAddFilterForm() {
+    document.getElementById('add-filter-form').style.display = 'block';
+    document.getElementById('new-filter-pattern').focus();
+}
+
+function cancelAddFilter() {
+    document.getElementById('add-filter-form').style.display = 'none';
+    document.getElementById('new-filter-pattern').value = '';
+    document.getElementById('new-filter-description').value = '';
+}
+
+async function saveNewFilter() {
+    const pattern = document.getElementById('new-filter-pattern').value.trim();
+    const description = document.getElementById('new-filter-description').value.trim();
+    
+    if (!pattern) {
+        alert('Please enter a regex pattern');
+        return;
+    }
+    
+    // Validate regex
+    try {
+        new RegExp(pattern);
+    } catch (e) {
+        alert('Invalid regex pattern: ' + e.message);
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/regex-filters', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pattern, description })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to save filter');
+        }
+        
+        const data = await response.json();
+        regexFilters.push(data.filter);
+        filterToggles[data.filter.id] = true;
+        
+        // Save the active state to localStorage immediately
+        saveToggleState(data.filter.pattern, true);
+        
+        cancelAddFilter();
+        renderFilterList();
+        applyFiltersToCurrentData();
+        showFilterStatus('Filter added successfully', 'info');
+    } catch (error) {
+        alert('Error saving filter: ' + error.message);
+    }
+}
+
+function editFilter(filterId) {
+    // Hide pattern/description display, show edit form
+    const patternDisplay = document.getElementById(`pattern-display-${filterId}`);
+    const descriptionDisplay = document.getElementById(`description-display-${filterId}`);
+    const editForm = document.getElementById(`edit-form-${filterId}`);
+    
+    if (patternDisplay) patternDisplay.classList.add('editing');
+    if (descriptionDisplay) descriptionDisplay.style.display = 'none';
+    if (editForm) editForm.classList.add('active');
+    
+    // Focus on pattern input
+    const patternInput = document.getElementById(`edit-pattern-${filterId}`);
+    if (patternInput) {
+        setTimeout(() => patternInput.focus(), 100);
+    }
+}
+
+function cancelFilterEdit(filterId) {
+    // Show pattern/description display, hide edit form
+    const patternDisplay = document.getElementById(`pattern-display-${filterId}`);
+    const descriptionDisplay = document.getElementById(`description-display-${filterId}`);
+    const editForm = document.getElementById(`edit-form-${filterId}`);
+    
+    if (patternDisplay) patternDisplay.classList.remove('editing');
+    if (descriptionDisplay) {
+        const filter = regexFilters.find(f => f.id === filterId);
+        if (filter && filter.description) {
+            descriptionDisplay.style.display = 'block';
+        }
+    }
+    if (editForm) editForm.classList.remove('active');
+    
+    // Reset form values to original
+    const filter = regexFilters.find(f => f.id === filterId);
+    if (filter) {
+        const patternInput = document.getElementById(`edit-pattern-${filterId}`);
+        const descriptionInput = document.getElementById(`edit-description-${filterId}`);
+        if (patternInput) patternInput.value = filter.pattern;
+        if (descriptionInput) descriptionInput.value = filter.description || '';
+    }
+}
+
+async function saveFilterEdit(filterId) {
+    const patternInput = document.getElementById(`edit-pattern-${filterId}`);
+    const descriptionInput = document.getElementById(`edit-description-${filterId}`);
+    
+    if (!patternInput) return;
+    
+    const pattern = patternInput.value.trim();
+    const description = descriptionInput ? descriptionInput.value.trim() : '';
+    
+    if (!pattern) {
+        showFilterStatus('Pattern cannot be empty', 'warning');
+        return;
+    }
+    
+    // Validate regex
+    try {
+        new RegExp(pattern);
+    } catch (e) {
+        showFilterStatus('Invalid regex pattern: ' + e.message, 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/regex-filters/${filterId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pattern, description })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to update filter');
+        }
+        
+        const data = await response.json();
+        const index = regexFilters.findIndex(f => f.id === filterId);
+        if (index !== -1) {
+            const oldPattern = regexFilters[index].pattern;
+            regexFilters[index] = data.filter;
+            
+            // If pattern changed, migrate localStorage toggle state
+            if (oldPattern !== pattern) {
+                const oldToggleState = loadToggleState(oldPattern);
+                saveToggleState(pattern, oldToggleState);
+                // Remove old key
+                localStorage.removeItem(getLocalStorageKey(oldPattern));
+                filterToggles[filterId] = oldToggleState;
+            }
+        }
+        
+        renderFilterList();
+        applyFiltersToCurrentData();
+        showFilterStatus('Filter updated successfully', 'info');
+    } catch (error) {
+        showFilterStatus('Error updating filter: ' + error.message, 'warning');
+    }
+}
+
+async function deleteFilter(filterId) {
+    if (!confirm('Are you sure you want to delete this filter?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/regex-filters/${filterId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to delete filter');
+        }
+        
+        regexFilters = regexFilters.filter(f => f.id !== filterId);
+        delete filterToggles[filterId];
+        
+        renderFilterList();
+        applyFiltersToCurrentData();
+        showFilterStatus('Filter deleted successfully', 'info');
+    } catch (error) {
+        alert('Error deleting filter: ' + error.message);
+    }
+}
+
+function toggleFilter(filterId) {
+    const checkbox = event.target;
+    const enabled = checkbox.checked;
+    filterToggles[filterId] = enabled;
+    
+    // Save to localStorage
+    const filter = regexFilters.find(f => f.id === filterId);
+    if (filter) {
+        saveToggleState(filter.pattern, enabled);
+    }
+    
+    applyFiltersToCurrentData();
+}
+
+function toggleAllFilters() {
+    const masterToggle = document.getElementById('filter-master-toggle');
+    const enabled = masterToggle.checked;
+    
+    regexFilters.forEach(filter => {
+        filterToggles[filter.id] = enabled;
+        saveToggleState(filter.pattern, enabled);
+    });
+    
+    renderFilterList();
+    applyFiltersToCurrentData();
+}
+
+function applyFiltersToCurrentData() {
+    if (!currentData) return;
+    
+    // Get enabled filters (those that are checked/active)
+    const enabledFilters = regexFilters.filter(f => filterToggles[f.id] === true);
+    
+    if (enabledFilters.length === 0) {
+        // No filters enabled, show all traffic
+        document.querySelectorAll('tr.filter-hidden').forEach(row => {
+            row.classList.remove('filter-hidden');
+        });
+        showFilterStatus('', '');
+        hideFilteredStats();
+        return;
+    }
+    
+    // Compile regex patterns
+    const patterns = enabledFilters.map(f => {
+        try {
+            return new RegExp(f.pattern);
+        } catch (e) {
+            console.error(`Invalid regex pattern: ${f.pattern}`, e);
+            return null;
+        }
+    }).filter(p => p !== null);
+    
+    if (patterns.length === 0) {
+        showFilterStatus('No valid regex patterns', 'warning');
+        hideFilteredStats();
+        return;
+    }
+    
+    // Apply filters to table rows and calculate filtered stats
+    const rows = document.querySelectorAll('.traffic-table tbody tr');
+    let hiddenCount = 0;
+    let totalCount = rows.length;
+    let filteredStats = {
+        uniqueIPs: new Set(),
+        totalBytes: 0,
+        totalPackets: 0
+    };
+    
+    rows.forEach(row => {
+        const ipCell = row.querySelector('td:nth-child(2) code');
+        if (!ipCell) return;
+        
+        // Extract all relevant fields
+        const ip = ipCell.textContent;
+        const typeCell = row.querySelector('td:nth-child(3) .ip-type');
+        const type = typeCell ? typeCell.textContent : '';
+        const domainCell = row.querySelector('td:nth-child(4)');
+        const domain = domainCell ? domainCell.textContent : '';
+        const ispCell = row.querySelector('td:nth-child(5)');
+        const isp = ispCell ? ispCell.textContent : '';
+        const portsCell = row.querySelector('td:nth-child(8)');
+        const ports = portsCell ? portsCell.textContent : '';
+        const processesCell = row.querySelector('td:nth-child(9)');
+        const processes = processesCell ? processesCell.textContent : '';
+        
+        // Check if any pattern matches any field
+        const matches = patterns.some(pattern => 
+            pattern.test(ip) || 
+            pattern.test(type) || 
+            pattern.test(domain) || 
+            pattern.test(isp) ||
+            pattern.test(ports) ||
+            pattern.test(processes)
+        );
+        
+        // INVERTED LOGIC: If it matches, HIDE it
+        if (matches) {
+            row.classList.add('filter-hidden');
+            hiddenCount++;
+        } else {
+            row.classList.remove('filter-hidden');
+            
+            // Calculate stats for visible rows
+            filteredStats.uniqueIPs.add(ip);
+            
+            // Extract bytes and packets from the row
+            const bytesCell = row.querySelector('td:nth-child(6)');
+            const packetsCell = row.querySelector('td:nth-child(7)');
+            
+            if (bytesCell) {
+                const bytesText = bytesCell.textContent.trim();
+                const bytes = parseBytesFromText(bytesText);
+                filteredStats.totalBytes += bytes;
+            }
+            
+            if (packetsCell) {
+                const packetsText = packetsCell.textContent.trim().replace(/,/g, '');
+                const packets = parseInt(packetsText, 10) || 0;
+                filteredStats.totalPackets += packets;
+            }
+        }
+    });
+    
+    const visibleCount = totalCount - hiddenCount;
+    showFilterStatus(
+        `Hiding ${hiddenCount} of ${totalCount} traffic entries (${enabledFilters.length} filter${enabledFilters.length > 1 ? 's' : ''} active)`,
+        hiddenCount > 0 ? 'info' : 'info'
+    );
+    
+    // Update filtered stats display
+    updateFilteredStats(filteredStats);
+}
+
+function parseBytesFromText(text) {
+    // Parse text like "1.2 MB" or "500 KB" back to bytes
+    const match = text.match(/([\d.]+)\s*([KMGT]?B)/i);
+    if (!match) return 0;
+    
+    const value = parseFloat(match[1]);
+    const unit = match[2].toUpperCase();
+    
+    const multipliers = {
+        'B': 1,
+        'KB': 1024,
+        'MB': 1024 * 1024,
+        'GB': 1024 * 1024 * 1024,
+        'TB': 1024 * 1024 * 1024 * 1024
+    };
+    
+    return value * (multipliers[unit] || 1);
+}
+
+function updateFilteredStats(filteredStats) {
+    const ipsFiltered = document.getElementById('stat-ips-filtered');
+    const bytesFiltered = document.getElementById('stat-bytes-filtered');
+    const packetsFiltered = document.getElementById('stat-packets-filtered');
+    
+    if (ipsFiltered) {
+        ipsFiltered.textContent = ` (${formatNumber(filteredStats.uniqueIPs.size)} visible)`;
+        ipsFiltered.style.display = 'block';
+    }
+    
+    if (bytesFiltered) {
+        bytesFiltered.textContent = ` (${formatBytes(filteredStats.totalBytes)} visible)`;
+        bytesFiltered.style.display = 'block';
+    }
+    
+    if (packetsFiltered) {
+        packetsFiltered.textContent = ` (${formatNumber(filteredStats.totalPackets)} visible)`;
+        packetsFiltered.style.display = 'block';
+    }
+}
+
+function hideFilteredStats() {
+    const ipsFiltered = document.getElementById('stat-ips-filtered');
+    const bytesFiltered = document.getElementById('stat-bytes-filtered');
+    const packetsFiltered = document.getElementById('stat-packets-filtered');
+    
+    if (ipsFiltered) ipsFiltered.style.display = 'none';
+    if (bytesFiltered) bytesFiltered.style.display = 'none';
+    if (packetsFiltered) packetsFiltered.style.display = 'none';
+}
+
+function showFilterStatus(message, type) {
+    const statusDiv = document.getElementById('filter-status');
+    if (!message) {
+        statusDiv.innerHTML = '';
+        return;
+    }
+    statusDiv.innerHTML = `<div class="filter-status ${type}">${message}</div>`;
+}
 
 // Page-specific initialization
 window.addEventListener('DOMContentLoaded', async () => {

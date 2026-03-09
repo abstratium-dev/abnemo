@@ -184,6 +184,7 @@
         </header>
 
         <div class="main-content">
+            <div id="auth-message" class="auth-card"></div>
             {% block content %}{% endblock %}
         </div>
     </div>
@@ -251,13 +252,44 @@
 
         function updateAppVisibility() {
             const appContent = document.getElementById('app-content');
-            if (!appContent) return;
+            const authMessage = document.getElementById('auth-message');
+            
             if (!authState.oauth_enabled) {
-                appContent.style.display = '';
+                if (appContent) appContent.style.display = '';
+                if (authMessage) authMessage.classList.remove('active');
                 return;
             }
+            
             const visible = authState.authenticated && authState.has_access;
-            appContent.style.display = visible ? '' : 'none';
+            
+            if (appContent) {
+                appContent.style.display = visible ? '' : 'none';
+            }
+            
+            // Show auth message in main content area
+            if (authMessage) {
+                if (!visible) {
+                    let message = '';
+                    let actions = '';
+                    
+                    if (!authState.authenticated) {
+                        message = '<div><strong>⚠️ Authentication Required</strong><div class="auth-details">You must sign in to view this page.</div></div>';
+                        actions = '<div class="auth-actions"><button onclick="startLogin()" style="padding: 8px 16px; cursor: pointer;">Sign In</button></div>';
+                    } else if (!authState.has_access) {
+                        const displayName = (authState.user && (authState.user.name || authState.user.email)) || 'User';
+                        const requiredGroups = authState.required_groups || (authState.required_group ? [authState.required_group] : []);
+                        const groupText = requiredGroups.length > 0 ? requiredGroups.join(', ') : 'required group';
+                        message = `<div><strong>⚠️ Access Denied</strong><div class="auth-details">Signed in as ${displayName}, but you don't have access to this page. Required group: ${groupText}</div></div>`;
+                        actions = '<div class="auth-actions"><button onclick="logout()" style="padding: 8px 16px; cursor: pointer;">Sign Out</button></div>';
+                    }
+                    
+                    authMessage.innerHTML = message + actions;
+                    authMessage.classList.add('active');
+                } else {
+                    authMessage.classList.remove('active');
+                }
+            }
+            
             if (!visible) {
                 const errorContainer = document.getElementById('error-container');
                 if (errorContainer) {
