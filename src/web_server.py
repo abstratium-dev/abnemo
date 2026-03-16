@@ -182,6 +182,152 @@ def get_logs_in_range(log_dir, begin_time, end_time):
     }
 
 
+def get_traffic_time_series(log_dir, begin_time, end_time, pattern):
+    """Get time series traffic data filtered by regex pattern.
+    
+    Args:
+        log_dir: Directory containing traffic log files
+        begin_time: Start time (timezone-aware datetime)
+        end_time: End time (timezone-aware datetime)
+        pattern: Compiled regex pattern to match against traffic
+    
+    Returns:
+        Dictionary with time_series, traffic_by_ip, and aggregate stats
+    """
+    import re
+    
+    if not os.path.exists(log_dir):
+        return {"error": "Log directory not found"}
+    
+    log_files = glob.glob(os.path.join(log_dir, "traffic_log_*.json"))
+    time_series_dict = {}  # timestamp -> {bytes, packets}
+    aggregated_data = {}
+    total_bytes = 0
+    total_packets = 0
+    
+    for log_file in log_files:
+        try:
+            with open(log_file, 'r') as f:
+                data = json.load(f)
+            
+            timestamp_str = data.get('timestamp', '')
+            if not timestamp_str:
+                continue
+            
+            try:
+                file_timestamp = parse_log_timestamp(timestamp_str)
+            except (ValueError, AttributeError):
+                continue
+            
+            if file_timestamp < begin_time or file_timestamp >= end_time:
+                continue
+            
+            # Initialize time series point with zero (will be updated if there's matching traffic)
+            timestamp_iso = file_timestamp.isoformat()
+            if timestamp_iso not in time_series_dict:
+                time_series_dict[timestamp_iso] = {'bytes': 0, 'packets': 0}
+            
+            # Filter traffic by pattern
+            traffic_by_ip = data.get('traffic_by_ip', {})
+            period_bytes = 0
+            period_packets = 0
+            
+            for ip, stats in traffic_by_ip.items():
+                matched = False
+                
+                # Check if pattern matches IP
+                if pattern.search(ip):
+                    matched = True
+                
+                # Check if pattern matches domain
+                domains = stats.get('domains', [])
+                if not matched and any(pattern.search(str(d)) for d in domains):
+                    matched = True
+                
+                # Check if pattern matches ISP
+                isp = stats.get('isp', {})
+                if not matched and isp:
+                    isp_str = str(isp.get('org', '')) + ' ' + str(isp.get('country_code', ''))
+                    if pattern.search(isp_str):
+                        matched = True
+                
+                # Check if pattern matches ports
+                ports = stats.get('ports', [])
+                if not matched and any(pattern.search(str(p)) for p in ports):
+                    matched = True
+                
+                # Check if pattern matches processes
+                processes = stats.get('processes', [])
+                if not matched and processes:
+                    if isinstance(processes, list):
+                        for proc in processes:
+                            if isinstance(proc, dict) and pattern.search(str(proc.get('name', ''))):
+                                matched = True
+                                break
+                    elif isinstance(processes, dict):
+                        if any(pattern.search(str(name)) for name in processes.keys()):
+                            matched = True
+                
+                if matched:
+                    # Add to aggregated data
+                    if ip not in aggregated_data:
+                        aggregated_data[ip] = {
+                            'bytes': 0,
+                            'packets': 0,
+                            'domains': set(),
+                            'ports': set(),
+                            'ip_type': stats.get('ip_type', 'unknown'),
+                            'isp': stats.get('isp', {}),
+                            'first_seen': timestamp_iso,
+                            'last_seen': timestamp_iso
+                        }
+                    
+                    aggregated_data[ip]['bytes'] += stats.get('bytes', 0)
+                    aggregated_data[ip]['packets'] += stats.get('packets', 0)
+                    aggregated_data[ip]['domains'].update(stats.get('domains', []))
+                    aggregated_data[ip]['ports'].update(stats.get('ports', []))
+                    aggregated_data[ip]['last_seen'] = timestamp_iso
+                    
+                    period_bytes += stats.get('bytes', 0)
+                    period_packets += stats.get('packets', 0)
+                    total_bytes += stats.get('bytes', 0)
+                    total_packets += stats.get('packets', 0)
+            
+            # Update time series point with actual data
+            time_series_dict[timestamp_iso]['bytes'] += period_bytes
+            time_series_dict[timestamp_iso]['packets'] += period_packets
+        
+        except Exception as e:
+            logger.error(f"Error reading {log_file}: {e}")
+            continue
+    
+    # Convert sets to lists for JSON serialization
+    for ip in aggregated_data:
+        aggregated_data[ip]['domains'] = list(aggregated_data[ip]['domains'])
+        aggregated_data[ip]['ports'] = sorted(list(aggregated_data[ip]['ports']))
+    
+    # Convert time series dict to sorted list
+    time_series = [
+        {
+            'timestamp': ts,
+            'bytes': data['bytes'],
+            'packets': data['packets']
+        }
+        for ts, data in sorted(time_series_dict.items())
+    ]
+    
+    return {
+        'begin': begin_time.isoformat(),
+        'end': end_time.isoformat(),
+        'pattern': pattern.pattern,
+        'total_bytes': total_bytes,
+        'total_packets': total_packets,
+        'total_ips': len(aggregated_data),
+        'time_series': time_series,
+        'traffic_by_ip': aggregated_data
+    }
+
+
 
 
 def create_app(log_dir):
@@ -314,6 +460,61 @@ def create_app(log_dir):
         data = get_logs_in_range(log_dir, begin_time, end_time)
         return jsonify(data)
     
+    @app.route('/api/traffic-viz')
+    def api_traffic_viz():
+        """API endpoint for traffic visualization with regex pattern filtering.
+        Returns time series data and aggregated traffic matching the pattern.
+        """
+        auth_error = _ensure_authenticated_response()
+        if auth_error:
+            return auth_error
+        
+        begin_str = request.args.get('begin')
+        end_str = request.args.get('end')
+        pattern_str = request.args.get('pattern')
+        
+        if not pattern_str:
+            return jsonify({'error': 'Missing pattern parameter'}), 400
+        
+        # Validate regex pattern
+        try:
+            import re
+            pattern = re.compile(pattern_str)
+        except re.error as e:
+            return jsonify({'error': f'Invalid regex pattern: {str(e)}'}), 400
+        
+        # Parse time range
+        if not end_str:
+            end_time = datetime.now(timezone.utc)
+        else:
+            try:
+                end_time = datetime.fromisoformat(end_str.replace('Z', '+00:00'))
+                if not end_time.tzinfo:
+                    end_time = end_time.replace(tzinfo=timezone.utc)
+                else:
+                    end_time = end_time.astimezone(timezone.utc)
+            except ValueError:
+                return jsonify({'error': 'Invalid end timestamp format. Use ISO8601.'}), 400
+        
+        if not begin_str:
+            begin_time = end_time - timedelta(minutes=60)
+        else:
+            try:
+                begin_time = datetime.fromisoformat(begin_str.replace('Z', '+00:00'))
+                if not begin_time.tzinfo:
+                    begin_time = begin_time.replace(tzinfo=timezone.utc)
+                else:
+                    begin_time = begin_time.astimezone(timezone.utc)
+            except ValueError:
+                return jsonify({'error': 'Invalid begin timestamp format. Use ISO8601.'}), 400
+        
+        if begin_time >= end_time:
+            return jsonify({'error': 'begin must be before end'}), 400
+        
+        # Get traffic data with time series
+        data = get_traffic_time_series(log_dir, begin_time, end_time, pattern)
+        return jsonify(data)
+    
     @app.route('/')
     def index():
         """Serve index page using template"""
@@ -328,6 +529,11 @@ def create_app(log_dir):
     def fail2ban_page():
         """Serve fail2ban visualizer page using template"""
         return render_template('fail2ban.html')
+    
+    @app.route('/traffic-viz')
+    def traffic_viz_page():
+        """Serve traffic visualization page using template"""
+        return render_template('traffic_viz.html')
     
     @app.route('/<path:path>')
     def static_files(path):

@@ -1123,6 +1123,9 @@ function renderFilterList() {
         const createdDate = new Date(filter.created_at).toLocaleString();
         const updatedDate = filter.updated_at ? new Date(filter.updated_at).toLocaleString() : createdDate;
         
+        const encodedPattern = encodeURIComponent(filter.pattern);
+        const encodedDescription = encodeURIComponent(filter.description || '');
+        
         html += `
             <div class="filter-item" id="filter-${filter.id}">
                 <div class="filter-item-header">
@@ -1132,6 +1135,7 @@ function renderFilterList() {
                     </label>
                     <div class="filter-item-pattern" id="pattern-display-${filter.id}">${escapeHtml(filter.pattern)}</div>
                     <div class="filter-item-actions">
+                        <button onclick="viewFilterHits('${encodedPattern}', '${encodedDescription}')">📊 View Hits</button>
                         <button onclick="editFilter('${filter.id}')">Edit</button>
                         <button onclick="deleteFilter('${filter.id}')" class="quick-btn">Delete</button>
                     </div>
@@ -1537,6 +1541,26 @@ function showFilterStatus(message, type) {
     statusDiv.innerHTML = `<div class="filter-status ${type}">${message}</div>`;
 }
 
+function viewFilterHits(encodedPattern, encodedDescription) {
+    // Get current time range from the page
+    const beginInput = document.getElementById('begin-time').value;
+    const endInput = document.getElementById('end-time').value;
+    
+    let url = `/traffic-viz?pattern=${encodedPattern}`;
+    
+    if (encodedDescription) {
+        url += `&description=${encodedDescription}`;
+    }
+    
+    if (beginInput && endInput) {
+        const begin = new Date(beginInput).toISOString();
+        const end = new Date(endInput).toISOString();
+        url += `&begin=${encodeURIComponent(begin)}&end=${encodeURIComponent(end)}`;
+    }
+    
+    window.location.href = url;
+}
+
 // ========== WARN-LIST FILTER MANAGEMENT ==========
 
 function toggleWarnlistSection() {
@@ -1579,11 +1603,15 @@ function renderWarnlistList() {
         const createdDate = new Date(filter.created_at).toLocaleString();
         const updatedDate = filter.updated_at ? new Date(filter.updated_at).toLocaleString() : createdDate;
         
+        const encodedPattern = encodeURIComponent(filter.pattern);
+        const encodedDescription = encodeURIComponent(filter.description || '');
+        
         html += `
             <div class="filter-item" id="warnlist-${filter.id}">
                 <div class="filter-item-header">
                     <div class="filter-item-pattern" id="warnlist-pattern-display-${filter.id}">${escapeHtml(filter.pattern)}</div>
                     <div class="filter-item-actions">
+                        <button onclick="viewFilterHits('${encodedPattern}', '${encodedDescription}')">📊 View Hits</button>
                         <button onclick="editWarnlist('${filter.id}')">Edit</button>
                         <button onclick="deleteWarnlist('${filter.id}')" class="quick-btn">Delete</button>
                     </div>

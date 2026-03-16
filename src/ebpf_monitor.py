@@ -121,14 +121,28 @@ class EBPFMonitor(PacketMonitor):
             except KeyboardInterrupt:
                 pass
             
-            # Save final statistics
+            # Save final statistics (only if not in continuous mode)
+            # In continuous mode, the periodic logger already handles saves
             try:
-                logger.info("Saving final statistics...")
-                stats = self.get_statistics()
-                if stats:
-                    self.save_statistics()
+                if duration is not None:
+                    # Fixed duration mode - save final statistics
+                    logger.info("Saving final statistics...")
+                    stats = self.get_statistics()
+                    if stats:
+                        self.save_statistics()
+                    else:
+                        logger.info("No traffic captured")
                 else:
-                    logger.info("No traffic captured")
+                    # Continuous mode - check if there's unsaved data since last periodic save
+                    stats = self.get_statistics()
+                    if stats:
+                        logger.info("Saving final statistics (data since last periodic save)...")
+                        self.save_statistics()
+                        # Clear stats to prevent duplicate analysis if process restarts
+                        with self.lock:
+                            self.traffic_stats.clear()
+                    else:
+                        logger.info("No unsaved traffic data")
             except KeyboardInterrupt:
                 logger.warning("Interrupted during save - data may be incomplete")
             
