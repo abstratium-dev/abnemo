@@ -8,15 +8,43 @@ import argparse
 import sys
 import os
 import json
+import logging
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.packet_monitor import PacketMonitor
+from src.ebpf_monitor import EBPFMonitor
+
+logger = logging.getLogger(__name__)
+
+
+def configure_logging(log_level):
+    """Configure logging for the entire application.
+    
+    Args:
+        log_level: String log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    """
+    numeric_level = getattr(logging, log_level.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError(f'Invalid log level: {log_level}')
+    
+    # Configure root logger
+    logging.basicConfig(
+        level=numeric_level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    # Suppress overly verbose third-party loggers
+    logging.getLogger('urllib3').setLevel(logging.WARNING)
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
 
 def monitor_command(args):
     """Handle the monitor subcommand"""
+    # Configure logging
+    configure_logging(args.log_level)
+    
     # Get API key from args or environment variable
     api_key = args.isp_api_key or os.environ.get('IPAPI_KEY')
     
@@ -30,70 +58,37 @@ def monitor_command(args):
             daemon=True
         )
         web_thread.start()
-        print(f"[*] Web server started on http://0.0.0.0:{args.web_port}")
-        print(f"[*] Access at: http://localhost:{args.web_port}/")
-        print()
+        logger.info(f"Web server started on http://0.0.0.0:{args.web_port}")
+        logger.info(f"Access at: http://localhost:{args.web_port}/")
     
-    # Check if eBPF mode is requested
-    if args.ebpf:
-        from src.ebpf_monitor import EBPFMonitor
-        monitor = EBPFMonitor(
-            log_dir=args.log_dir,
-            isp_api_key=api_key,
-            log_retention_days=args.log_retention_days,
-            log_max_size_mb=args.log_max_size_mb,
-            continuous_log_interval=args.continuous_log_interval,
-            top_n=args.top,
-            isp_cache_ttl_hours=args.isp_cache_ttl,
-            isp_debug=args.isp_debug,
-            traffic_direction=args.traffic_direction
+    # Always use eBPF mode for process tracking
+    monitor = EBPFMonitor(
+        log_dir=args.log_dir,
+        isp_api_key=api_key,
+        log_retention_days=args.log_retention_days,
+        log_max_size_mb=args.log_max_size_mb,
+        continuous_log_interval=args.continuous_log_interval,
+        top_n=args.top,
+        isp_cache_ttl_hours=args.isp_cache_ttl,
+        traffic_direction=args.traffic_direction
+    )
+    
+    try:
+        monitor.start_monitoring_ebpf(
+            interface=args.interface,
+            duration=args.duration,
+            summary_interval=args.summary_interval,
+            top_n=args.top
         )
-        
-        try:
-            monitor.start_monitoring_ebpf(
-                interface=args.interface,
-                duration=args.duration,
-                summary_interval=args.summary_interval,
-                top_n=args.top
-            )
-        except PermissionError:
-            print("[!] Error: eBPF requires root privileges")
-            print("[!] Please run with sudo: sudo python3 abnemo.py monitor --ebpf")
-            sys.exit(1)
-        except Exception as e:
-            print(f"[!] Error during eBPF monitoring: {e}")
-            import traceback
-            traceback.print_exc()
-            sys.exit(1)
-    else:
-        # Standard Scapy mode
-        monitor = PacketMonitor(
-            log_dir=args.log_dir,
-            isp_api_key=api_key,
-            log_retention_days=args.log_retention_days,
-            log_max_size_mb=args.log_max_size_mb,
-            continuous_log_interval=args.continuous_log_interval,
-            enable_process_tracking=args.enable_process_tracking,
-            top_n=args.top,
-            isp_cache_ttl_hours=args.isp_cache_ttl,
-            isp_debug=args.isp_debug,
-            traffic_direction=args.traffic_direction
-        )
-        
-        try:
-            monitor.start_monitoring(
-                interface=args.interface, 
-                duration=args.duration,
-                summary_interval=args.summary_interval,
-                top_n=args.top
-            )
-        except PermissionError:
-            print("[!] Error: Packet capture requires root privileges")
-            print("[!] Please run with sudo: sudo python3 abnemo.py monitor")
-            sys.exit(1)
-        except Exception as e:
-            print(f"[!] Error during monitoring: {e}")
-            sys.exit(1)
+    except PermissionError:
+        logger.error("eBPF monitoring requires root privileges")
+        logger.error("Please run with sudo: sudo python3 abnemo.py monitor")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Error during monitoring: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
     
     # Print summary
     monitor.print_summary(top_n=args.top)
@@ -101,22 +96,24 @@ def monitor_command(args):
     # Save statistics
     log_file = monitor.save_statistics()
     
-    print(f"\n[*] To generate iptables rules from this log, run:")
-    print(f"    python3 src/abnemo.py generate --log {log_file} --interactive")
+    logger.info(f"\nTo generate iptables rules from this log, run:")
+    logger.info(f"    python3 src/abnemo.py generate --log {log_file} --interactive")
 
 
 def list_logs_command(args):
     """Handle the list-logs subcommand"""
+    configure_logging(args.log_level)
+    
     log_dir = args.log_dir
     
     if not os.path.exists(log_dir):
-        print(f"[!] Log directory not found: {log_dir}")
+        logger.error(f"Log directory not found: {log_dir}")
         return
     
     log_files = [f for f in os.listdir(log_dir) if f.endswith('.json')]
     
     if not log_files:
-        print(f"[!] No log files found in {log_dir}")
+        logger.warning(f"No log files found in {log_dir}")
         return
     
     print(f"\nLog files in {log_dir}:")
@@ -145,6 +142,8 @@ def list_logs_command(args):
 
 def iptables_tree_command(args):
     """Handle the iptables-tree subcommand - visualize iptables as tree"""
+    configure_logging(args.log_level)
+    
     from src.iptables import load_iptables_config, IptablesTreeFormatter
     
     # Load configuration
@@ -156,7 +155,7 @@ def iptables_tree_command(args):
             use_sudo=not args.file
         )
     except Exception as e:
-        print(f"[!] Error loading iptables configuration: {e}")
+        logger.error(f"Error loading iptables configuration: {e}")
         sys.exit(1)
     
     # Create formatter
@@ -170,12 +169,12 @@ def iptables_tree_command(args):
         # Show specific chain
         table = config.get_table(args.table)
         if not table:
-            print(f"[!] Table '{args.table}' not found")
+            logger.error(f"Table '{args.table}' not found")
             sys.exit(1)
         
         chain = table.get_chain(args.chain)
         if not chain:
-            print(f"[!] Chain '{args.chain}' not found in table '{args.table}'")
+            logger.error(f"Chain '{args.chain}' not found in table '{args.table}'")
             sys.exit(1)
         
         output = formatter.format_chain(chain, table)
@@ -188,14 +187,15 @@ def iptables_tree_command(args):
 
 def web_command(args):
     """Handle the web subcommand - start standalone web server"""
+    configure_logging(args.log_level)
+    
     from src.web_server import start_web_server
     
-    print(f"[*] Starting web server on http://0.0.0.0:{args.port}")
-    print(f"[*] Log directory: {args.log_dir}")
-    print(f"[*] API endpoint: http://0.0.0.0:{args.port}/api/traffic")
-    print(f"[*] Web interface: http://0.0.0.0:{args.port}/")
-    print(f"[*] Press Ctrl+C to stop")
-    print()
+    logger.info(f"Starting web server on http://0.0.0.0:{args.port}")
+    logger.info(f"Log directory: {args.log_dir}")
+    logger.info(f"API endpoint: http://0.0.0.0:{args.port}/api/traffic")
+    logger.info(f"Web interface: http://0.0.0.0:{args.port}/")
+    logger.info(f"Press Ctrl+C to stop")
     
     start_web_server(args.log_dir, args.port)
 
@@ -248,12 +248,11 @@ Examples:
     monitor_parser.add_argument('--log-retention-days', type=int, default=30, help='Delete logs older than N days (default: 30)')
     monitor_parser.add_argument('--log-max-size-mb', type=int, default=100, help='Delete oldest logs if total size exceeds N MB (default: 100)')
     monitor_parser.add_argument('--continuous-log-interval', type=int, default=60, help='Save logs every N seconds in continuous mode (default: 60, 0=disabled)')
-    monitor_parser.add_argument('--enable-process-tracking', action='store_true', help='Enable process/container identification (adds overhead)')
-    monitor_parser.add_argument('--ebpf', action='store_true', help='Use eBPF mode for zero-overhead process tracking (requires BCC)')
     monitor_parser.add_argument('--web', action='store_true', help='Start web server for live monitoring')
     monitor_parser.add_argument('--web-port', type=int, default=5000, help='Port for web server (default: 5000, only used with --web)')
     monitor_parser.add_argument('--isp-cache-ttl', type=int, default=72, help='ISP cache TTL in hours (default: 72)')
-    monitor_parser.add_argument('--isp-debug', action='store_true', help='Enable debug logging for ISP lookups')
+    monitor_parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                               help='Set logging level (default: INFO)')
     monitor_parser.add_argument('--traffic-direction', choices=['outgoing', 'incoming', 'bidirectional', 'all'], default='outgoing',
                                help='Traffic to monitor: outgoing (default, local->remote only), '
                                     'incoming (unsolicited incoming only, e.g., server traffic), '
@@ -263,12 +262,15 @@ Examples:
     # List logs command
     list_parser = subparsers.add_parser('list-logs', help='List all captured traffic logs')
     list_parser.add_argument('--log-dir', default='traffic_logs', help='Directory containing logs (default: traffic_logs)')
+    list_parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                            help='Set logging level (default: INFO)')
     
     # Web server command
     web_parser = subparsers.add_parser('web', help='Start web server for traffic visualization')
     web_parser.add_argument('--log-dir', default='traffic_logs', help='Directory containing logs (default: traffic_logs)')
     web_parser.add_argument('--port', type=int, default=5000, help='Port to run web server on (default: 5000)')
-    web_parser.add_argument('--debug', action='store_true', help='Run Flask in debug mode')
+    web_parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                           help='Set logging level (default: INFO)')
     
     # IPTables tree visualization command
     tree_parser = subparsers.add_parser('iptables-tree', help='Visualize iptables configuration as tree')
@@ -278,6 +280,8 @@ Examples:
     tree_parser.add_argument('-d', '--docker-only', action='store_true', help='Show only Docker-related chains and rules')
     tree_parser.add_argument('-n', '--no-rules', action='store_true', help='Hide rules, show only chains')
     tree_parser.add_argument('-c', '--chain', help='Show only a specific chain')
+    tree_parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                            help='Set logging level (default: INFO)')
     
     args = parser.parse_args()
     

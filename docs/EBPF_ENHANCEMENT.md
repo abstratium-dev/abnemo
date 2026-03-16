@@ -232,14 +232,10 @@ abnemo/
 
 ### Usage
 ```bash
-# Current mode (Scapy)
-sudo ./scripts/abnemo.sh monitor --enable-process-tracking
+sudo ./scripts/abnemo.sh monitor --summary-interval 10
 
-# New eBPF mode (no race conditions!)
-sudo ./scripts/abnemo.sh monitor --ebpf
-
-# Hybrid mode (eBPF for process tracking, Scapy for packet details)
-sudo ./scripts/abnemo.sh monitor --ebpf --enable-process-tracking
+# With web interface
+sudo ./scripts/abnemo.sh monitor --summary-interval 10 --web --web-port 5000
 ```
 
 ## Recommendation

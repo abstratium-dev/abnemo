@@ -59,6 +59,9 @@ export IPAPI_KEY=your_api_key_here
 
 # Monitor with live web interface (access at http://localhost:5000)
 ./scripts/abnemo.sh monitor --summary-interval 10 --web
+
+# Enable debug logging to see detailed information
+./scripts/abnemo.sh monitor --summary-interval 10 --log-level DEBUG
 ```
 
 **Step 2: View Captured Logs**
@@ -202,12 +205,44 @@ sudo /home/ant/miniconda3/bin/python3 src/abnemo.py monitor
 # Custom log retention (keep 7 days, max 50MB)
 ./scripts/abnemo.sh monitor --log-retention-days 7 --log-max-size-mb 50
 
-# Enable process tracking (identify which program sent packets)
-./scripts/abnemo.sh monitor --enable-process-tracking --summary-interval 10
-
 # Monitor with live web interface for real-time visualization
 ./scripts/abnemo.sh monitor --summary-interval 10 --web --web-port 5000
 ```
+
+#### Logging Levels
+
+Abnemo uses Python's standard logging framework. You can control the verbosity of output using the `--log-level` flag:
+
+```bash
+# INFO (default) - Shows important events and progress
+./scripts/abnemo.sh monitor --log-level INFO
+
+# DEBUG - Shows detailed diagnostic information (ISP lookups, cache hits/misses, email sending, etc.)
+./scripts/abnemo.sh monitor --log-level DEBUG
+
+# WARNING - Shows only warnings and errors
+./scripts/abnemo.sh monitor --log-level WARNING
+
+# ERROR - Shows only errors
+./scripts/abnemo.sh monitor --log-level ERROR
+
+# CRITICAL - Shows only critical errors
+./scripts/abnemo.sh monitor --log-level CRITICAL
+```
+
+**When to use DEBUG level:**
+- Troubleshooting ISP lookup issues
+- Debugging email notifications
+- Understanding cache behavior
+- Diagnosing connection problems
+
+**Example with debug logging:**
+```bash
+# See detailed ISP lookup and email sending information
+./scripts/abnemo.sh monitor --summary-interval 10 --log-level DEBUG
+```
+
+The `--log-level` flag is available for all commands: `monitor`, `list-logs`, `web`, and `iptables-tree`.
 
 #### Live Web Interface
 
@@ -253,7 +288,7 @@ The monitor will:
 - Classify IP addresses (multicast, private, public, reserved)
 - Perform reverse DNS lookups for each destination
 - Track bytes, packets, and ports per IP
-- Optionally identify which process/container sent packets (with `--enable-process-tracking`)
+- Identify which process/container sent packets using eBPF (kernel-level tracking)
 - Display periodic summaries if `--summary-interval` is specified
 - Display a final summary when stopped
 - Show human-readable port descriptions
@@ -285,14 +320,9 @@ When running without `--duration`, Abnemo operates in **continuous mode**:
 ./scripts/abnemo.sh monitor --continuous-log-interval 0
 ```
 
-#### Process Tracking (Optional)
+#### Process Tracking with eBPF
 
-Abnemo can identify **which process or Docker container** sent each packet. This feature is **disabled by default** to avoid performance overhead.
-
-**Enable with:**
-```bash
-./scripts/abnemo.sh monitor --enable-process-tracking --summary-interval 10
-```
+Abnemo uses **eBPF (Extended Berkeley Packet Filter)** for kernel-level process tracking with near-zero overhead.
 
 **What it shows:**
 - Process name and PID
@@ -316,50 +346,32 @@ Abnemo can identify **which process or Docker container** sent each packet. This
    Traffic: 987,654 bytes, 456 packets
 ```
 
+### Why eBPF?
+
+**Benefits:**
+- ✅ **Catches ALL processes** - even short-lived ones (curl, wget, ping)
+- ✅ **Near-zero overhead** - runs in kernel space (<0.1ms per connection)
+- ✅ **Complete visibility** - detects rogue scripts, crypto miners, scanners
+- ✅ **Docker tracking** - identifies containers without IP fallback
+- ✅ **Real-time** - captures process info before packet is sent
+
 **How it works:**
-- Uses `/proc/net/tcp` and `/proc/net/udp` to match sockets to processes
-- Parses `/proc/[pid]/cgroup` to identify Docker containers
-- **Fallback for Docker**: If process lookup fails (short-lived process), identifies container by source IP address
-- Results are cached to minimize overhead
-- Only looks up process info once per unique connection
-
-**Performance impact:**
-- **Disabled**: Zero overhead (module not loaded)
-- **Enabled**: ~1-5ms per unique connection (first packet only)
-- Cached results used for subsequent packets
-- Suitable for moderate traffic (hundreds of connections/sec)
-
-**Limitations:**
-- Requires root access (already needed for packet capture)
-- **May miss short-lived processes** (curl, wget, ping) due to race conditions - the socket may close before Abnemo can look it up
-- **Docker containers with brief connections**: Process name may not be detected, but container name will be identified via IP fallback
-- Works best for **long-lived connections** (browsers, SSH, persistent services)
-- Cannot identify process for forwarded/NAT traffic
-- Docker container identification requires Docker CLI access
-
-**Troubleshooting:**
-- If processes aren't showing up, they may be completing too quickly
-- Use `sudo python3 test_process_lookup.py` to debug
-- Check `ss -tnp` to see active connections
-- See `PROCESS_TRACKING_NOTES.md` for detailed debugging guide
-- **For zero race conditions, use eBPF mode** (see below)
+1. **Kernel hooks**: Attaches to `tcp_sendmsg()`, `udp_sendmsg()`, `tcp_connect()`
+2. **Pre-capture**: Extracts PID, process name, cgroup **before** packet is sent
+3. **No race condition**: Process info captured even if process exits in 1ms
+4. **Zero overhead**: Runs in kernel space, minimal CPU usage
+5. **Complete visibility**: Catches ALL network activity, even brief connections
 
 ---
 
-## eBPF Mode (Advanced)
+## eBPF Setup
 
-**NEW:** Abnemo now supports eBPF (Extended Berkeley Packet Filter) for kernel-level process tracking with **zero race conditions**.
+### Requirements
 
-### Why eBPF?
-
-| Feature | Standard Mode | eBPF Mode |
-|---------|--------------|-----------|
-| Race conditions | Yes (misses short-lived processes) | **No (catches everything)** |
-| CPU overhead | ~1-5ms per connection | **<0.1ms** |
-| Catches curl/wget | ❌ No | ✅ **Yes** |
-| Catches Docker scripts | Sometimes | ✅ **Always** |
-| Setup complexity | Easy | Medium |
-| Kernel requirement | Any | 4.x+ |
+- Linux kernel 4.x or higher (5.x recommended)
+- BCC (BPF Compiler Collection) installed
+- Root privileges (required for packet capture)
+- BPF enabled in kernel (usually default)
 
 ### Installation
 
@@ -389,35 +401,15 @@ conda deactivate
 ### Usage
 
 ```bash
-# eBPF mode (recommended for security monitoring)
-sudo ./scripts/abnemo.sh monitor --ebpf --summary-interval 10
+# Standard monitoring
+sudo ./scripts/abnemo.sh monitor --summary-interval 10
 
-# Or directly
-sudo python3 src/abnemo.py monitor --ebpf --summary-interval 10 --top 20
+# With web interface
+sudo ./scripts/abnemo.sh monitor --summary-interval 10 --web --web-port 5000
+
+# Continuous monitoring with custom settings
+sudo python3 src/abnemo.py monitor --summary-interval 10 --top 20 --log-retention-days 7
 ```
-
-### How It Works
-
-1. **Kernel hooks**: Attaches to `tcp_sendmsg()`, `udp_sendmsg()`, `tcp_connect()`
-2. **Pre-capture**: Extracts PID, process name, cgroup **before** packet is sent
-3. **No race condition**: Process info captured even if process exits in 1ms
-4. **Zero overhead**: Runs in kernel space, minimal CPU usage
-5. **Complete visibility**: Catches ALL network activity, even brief connections
-
-### Perfect For
-
-- ✅ Detecting rogue scripts (curl, wget, python requests)
-- ✅ Security monitoring (24/7 with <1% CPU)
-- ✅ Docker container tracking (no IP fallback needed)
-- ✅ Short-lived processes (crypto miners, scanners)
-- ✅ Real-time alerting
-
-### Requirements
-
-- Linux kernel 4.x or higher (5.x recommended)
-- BCC (BPF Compiler Collection) installed
-- Root privileges (same as standard mode)
-- BPF enabled in kernel (usually default)
 
 ### Build & Test
 
@@ -425,30 +417,14 @@ sudo python3 src/abnemo.py monitor --ebpf --summary-interval 10 --top 20
 # Check requirements and compile eBPF program
 ./scripts/build_ebpf.sh
 
-# Test eBPF mode
-sudo python3 src/abnemo.py monitor --ebpf --duration 30 --summary-interval 10
+# Test monitoring
+sudo python3 src/abnemo.py monitor --duration 30 --summary-interval 10
 
 # In another terminal, test with short-lived process
 curl https://microsoft.com
 curl https://google.com
 
-# eBPF will catch these! Standard mode might miss them.
-```
-
-### Comparison Example
-
-**Standard mode:**
-```bash
-sudo ./scripts/abnemo.sh monitor --enable-process-tracking --summary-interval 10
-# Run: curl https://microsoft.com
-# Result: ❌ Might miss (race condition)
-```
-
-**eBPF mode:**
-```bash
-sudo ./scripts/abnemo.sh monitor --ebpf --summary-interval 10
-# Run: curl https://microsoft.com
-# Result: ✅ Always catches (no race condition)
+# eBPF will catch these processes!
 ```
 
 ### Troubleshooting

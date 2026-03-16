@@ -220,7 +220,7 @@ To verify process tracking works:
 firefox &
 
 # Run Abnemo
-sudo ./scripts/abnemo.sh monitor --enable-process-tracking --summary-interval 10
+sudo ./scripts/abnemo.sh monitor --summary-interval 10
 
 # Browse to a website
 # You should see "firefox" in the process list

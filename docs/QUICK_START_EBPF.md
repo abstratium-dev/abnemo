@@ -27,15 +27,14 @@ Expected output:
 ✓ All checks passed!
 ```
 
-## 3. Run eBPF Monitor
+## 3. Run Monitor
 
 ```bash
 # Basic usage
-sudo ./scripts/abnemo.sh monitor --ebpf --summary-interval 10
+sudo ./scripts/abnemo.sh monitor --summary-interval 10
 
 # With all options
 sudo python3 src/abnemo.py monitor \
-    --ebpf \
     --summary-interval 10 \
     --top 20 \
     --duration 300
@@ -59,19 +58,14 @@ Process: wget (PID: 12346)
 Process: ping (PID: 12347)
 ```
 
-## 5. Compare with Standard Mode
+## 5. Verify Process Tracking
 
-**Standard mode (might miss short processes):**
+Run the monitor and test with short-lived processes:
 ```bash
-sudo ./scripts/abnemo.sh monitor --enable-process-tracking --summary-interval 10
+sudo ./scripts/abnemo.sh monitor --summary-interval 10
 ```
 
-**eBPF mode (catches everything):**
-```bash
-sudo ./scripts/abnemo.sh monitor --ebpf --summary-interval 10
-```
-
-Run `curl https://microsoft.com` in both - eBPF will catch it!
+Run `curl https://microsoft.com` - eBPF will catch it!
 
 ## Troubleshooting
 
@@ -94,28 +88,27 @@ sudo whoami
 ./scripts/build_ebpf.sh
 ```
 
-## When to Use eBPF Mode
+## Use Cases
 
-✅ **Use eBPF when:**
+✅ **Perfect for:**
 - Detecting rogue scripts (curl, wget, python)
 - Security monitoring (24/7)
-- Need to catch ALL connections
+- Catching ALL connections (no race conditions)
 - Docker container monitoring
 - Low CPU overhead required
 
-❌ **Use Standard mode when:**
-- Quick testing (easier setup)
-- BCC not available
-- Older kernel (<4.x)
-- Just learning Abnemo
+⚠️ **Requirements:**
+- BCC must be installed
+- Kernel 4.x or higher
+- Root privileges
 
 ## Performance
 
-| Metric | Standard | eBPF |
-|--------|----------|------|
-| CPU overhead | 3-8% | 1-2% |
-| Catches curl | ~20% | 100% |
-| Setup time | 1 min | 5 min |
+| Metric | Value |
+|--------|-------|
+| CPU overhead | 1-2% |
+| Catches short-lived processes | 100% |
+| Setup time | 5 min |
 
 ## Summary
 
@@ -127,7 +120,7 @@ sudo apt install python3-bpfcc
 ./scripts/build_ebpf.sh
 
 # Run (always)
-sudo ./scripts/abnemo.sh monitor --ebpf --summary-interval 10
+sudo ./scripts/abnemo.sh monitor --summary-interval 10
 ```
 
 That's it! You now have kernel-level network monitoring with zero race conditions. 🎉

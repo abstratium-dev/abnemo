@@ -4,19 +4,16 @@
 1. [Overview](#overview)
 2. [Architecture](#architecture)
 3. [eBPF Mode Deep Dive](#ebpf-mode-deep-dive)
-4. [Standard Mode](#standard-mode)
-5. [Data Flow](#data-flow)
-6. [Security Considerations](#security-considerations)
-7. [Performance Analysis](#performance-analysis)
-8. [Memory Management](#memory-management)
+4. [Data Flow](#data-flow)
+5. [Security Considerations](#security-considerations)
+6. [Performance Analysis](#performance-analysis)
+7. [Memory Management](#memory-management)
 
 ---
 
 ## Overview
 
-Abnemo is a network traffic monitoring tool with two modes:
-- **Standard Mode**: Userspace packet capture using Scapy
-- **eBPF Mode**: Kernel-level process tracking with zero race conditions
+Abnemo is a network traffic monitoring tool that uses **eBPF (Extended Berkeley Packet Filter)** for kernel-level process tracking.
 
 ### Key Features
 - Real-time network monitoring (IPv4 and IPv6)
@@ -41,9 +38,8 @@ graph TB
         DNS[DNS Resolver]
         LOG[Log Manager]
         
-        CLI -->|Standard Mode| PM
-        CLI -->|eBPF Mode| EM
-        PM --> ISP
+        CLI --> EM
+        EM --> ISP
         PM --> DNS
         PM --> LOG
         EM --> ISP
@@ -232,88 +228,6 @@ graph TB
 
 ---
 
-## Standard Mode
-
-### Packet Capture Flow
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Python as PacketMonitor
-    participant Scapy
-    participant Libpcap
-    participant Kernel
-    participant Network
-    
-    User->>Python: Start monitoring
-    Python->>Scapy: sniff(filter="ip or ip6")
-    Scapy->>Libpcap: Open capture
-    Libpcap->>Kernel: Create packet socket
-    Kernel-->>Libpcap: Socket ready
-    
-    Note over Kernel,Network: Packet arrives
-    
-    Network->>Kernel: Packet received
-    Kernel->>Libpcap: Copy packet to userspace
-    Libpcap->>Scapy: Packet data
-    Scapy->>Python: packet_callback()
-    
-    Python->>Python: Extract IPs, ports
-    Python->>Python: Check if local IP
-    
-    alt Process Tracking Enabled
-        Python->>Python: Read /proc/net/tcp
-        Python->>Python: Match socket inode
-        Python->>Python: Find process by PID
-        Note over Python: Race condition possible!
-    end
-    
-    Python->>Python: DNS lookup
-    Python->>Python: ISP lookup
-    Python->>Python: Update statistics
-    
-    User->>Python: Ctrl+C
-    Python->>Scapy: Stop sniffing
-    Python->>Python: Save statistics
-```
-
-### Process Tracking (Standard Mode)
-
-```mermaid
-flowchart TD
-    A[Packet Captured] --> B[Extract src_ip:src_port]
-    B --> C[Read /proc/net/tcp]
-    C --> D{Find Matching Socket?}
-    
-    D -->|Yes| E[Get Socket Inode]
-    D -->|No| F[No Process Info]
-    
-    E --> G[Scan /proc/[pid]/fd/*]
-    G --> H{Find Matching Inode?}
-    
-    H -->|Yes| I[Read /proc/[pid]/comm]
-    H -->|No| J[Process Exited - Race Condition!]
-    
-    I --> K[Read /proc/[pid]/cgroup]
-    K --> L{Docker Container?}
-    
-    L -->|Yes| M[Extract Container ID]
-    L -->|No| N[Regular Process]
-    
-    M --> O[Docker Inspect for Name]
-    
-    J --> P[Fallback: Identify by IP]
-    P --> Q[Docker Inspect All Containers]
-    Q --> R{IP Match?}
-    R -->|Yes| S[Container Found]
-    R -->|No| F
-    
-    style J fill:#f99,stroke:#333,stroke-width:2px
-    style P fill:#ff9,stroke:#333,stroke-width:2px
-```
-
----
-
 ## Data Flow
 
 ### Complete Monitoring Flow (eBPF Mode)
@@ -487,18 +401,7 @@ flowchart TD
 
 ```mermaid
 graph LR
-    subgraph "Standard Mode"
-        S1[Packet Capture: 2-5%]
-        S2[Process Lookup: 1-3%]
-        S3[DNS/ISP: 1-2%]
-        STOTAL[Total: 4-10%]
-        
-        S1 --> STOTAL
-        S2 --> STOTAL
-        S3 --> STOTAL
-    end
-    
-    subgraph "eBPF Mode"
+    subgraph "eBPF Mode CPU Overhead"
         E1[eBPF Hooks: 0.1-0.5%]
         E2[Event Processing: 0.5-1%]
         E3[DNS/ISP: 1-2%]
@@ -509,7 +412,6 @@ graph LR
         E3 --> ETOTAL
     end
     
-    style STOTAL fill:#f99,stroke:#333,stroke-width:2px
     style ETOTAL fill:#9f9,stroke:#333,stroke-width:2px
 ```
 
@@ -517,16 +419,9 @@ graph LR
 
 ```mermaid
 gantt
-    title Packet Processing Latency
+    title Packet Processing Latency (eBPF Mode)
     dateFormat X
     axisFormat %L ms
-    
-    section Standard Mode
-    Packet Capture     :0, 2
-    Process Lookup     :2, 5
-    DNS Lookup         :5, 25
-    ISP Lookup         :25, 50
-    Total              :0, 50
     
     section eBPF Mode
     eBPF Hook          :0, 0.1
@@ -673,34 +568,16 @@ self.bpf["events"].open_perf_buffer(self._handle_event, page_cnt=256)
 
 ---
 
-## Comparison Matrix
-
-### Standard vs eBPF Mode
-
-| Feature | Standard Mode | eBPF Mode |
-|---------|--------------|-----------|
-| **Setup Complexity** | Easy (apt/pip install) | Medium (BCC required) |
-| **Kernel Requirement** | Any | 4.x+ |
-| **CPU Overhead** | 4-10% | 1.6-3.5% |
-| **Memory Overhead** | ~50 MB | ~100 MB |
-| **Race Conditions** | Yes (misses short processes) | No (catches everything) |
-| **curl Detection** | ~20% success | 100% success |
-| **Docker Detection** | Via IP fallback | Direct cgroup |
-| **IPv6 Support** | ✅ Yes | ✅ Yes |
-| **Process Name** | ✅ Yes | ✅ Yes |
-| **Process PID** | ✅ Yes | ✅ Yes |
-| **Container Name** | ⚠️ Sometimes | ✅ Always |
-| **Real-time** | ✅ Yes | ✅ Yes |
-| **Packet Size** | ✅ Accurate | ⚠️ Estimated |
-| **Best For** | Testing, Development | Production, Security |
-
----
-
 ## Conclusion
 
-Abnemo provides two complementary modes:
+Abnemo uses eBPF (Extended Berkeley Packet Filter) for production-ready, security-focused network monitoring.
 
-1. **Standard Mode**: Easy to set up, good for development and testing
-2. **eBPF Mode**: Production-ready, security-focused, zero race conditions
+**Key Features:**
+- ✅ **Catches ALL processes**, even short-lived ones
+- ✅ **Low overhead** - 1.6-3.5% CPU usage
+- ✅ **Complete visibility** - 100% detection rate for all network activity
+- ✅ **Direct container tracking** - identifies Docker containers via cgroup
+- ✅ **IPv6 support** - full support for IPv4 and IPv6
+- ✅ **Real-time monitoring** - immediate process identification
 
 The eBPF implementation uses kernel-level hooks with proper resource management (LRU HashMap, bounded perf buffer) to prevent memory leaks while maintaining high performance and complete visibility into network activity.

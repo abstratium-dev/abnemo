@@ -115,8 +115,8 @@ docker inspect <container_id>
 # Add user to docker group
 sudo usermod -aG docker $USER
 
-# Or run with sudo (already required for eBPF)
-sudo ./scripts/abnemo.sh monitor --ebpf
+# Or run with sudo (already required for packet capture)
+sudo ./scripts/abnemo.sh monitor
 ```
 
 ## Performance Impact

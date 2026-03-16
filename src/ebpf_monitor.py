@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 eBPF-based Network Monitor
-Uses kernel-level hooks to track all network connections with zero race conditions
+Uses kernel-level hooks to track all network connections
 """
 
 import time
@@ -9,18 +9,20 @@ import signal
 import threading
 import subprocess
 import os
+import logging
 from collections import defaultdict
 from datetime import datetime
 from src.packet_monitor import PacketMonitor
 from ebpf.ebpf_loader import EBPFLoader
+
+logger = logging.getLogger(__name__)
 
 
 class EBPFMonitor(PacketMonitor):
     """Network monitor using eBPF for process tracking"""
     
     def __init__(self, *args, **kwargs):
-        # Force process tracking off - we use eBPF instead
-        kwargs['enable_process_tracking'] = False
+        # Initialize parent PacketMonitor class
         super().__init__(*args, **kwargs)
         
         self.ebpf_loader = None
@@ -46,24 +48,24 @@ class EBPFMonitor(PacketMonitor):
         if top_n is not None:
             self.top_n = top_n
         
-        print(f"[*] Starting eBPF network monitor")
-        print(f"[*] Mode: eBPF kernel hooks (no race conditions!)")
+        logger.info(f"Starting eBPF network monitor")
+        logger.info(f"Mode: eBPF kernel hooks")
         if summary_interval:
-            print(f"[*] Periodic summaries every {summary_interval} seconds (showing top {self.top_n})")
+            logger.info(f"Periodic summaries every {summary_interval} seconds (showing top {self.top_n})")
         if duration is None and self.continuous_log_interval:
-            print(f"[*] Continuous mode: saving logs every {self.continuous_log_interval} seconds")
-        print("[*] Press Ctrl+C to stop monitoring\n")
+            logger.info(f"Continuous mode: saving logs every {self.continuous_log_interval} seconds")
+        logger.info("Press Ctrl+C to stop monitoring")
         
         # Load eBPF program
         try:
             self.ebpf_loader = EBPFLoader()
             self.ebpf_loader.load(self._handle_ebpf_event)
         except Exception as e:
-            print(f"[!] Failed to load eBPF: {e}")
-            print("[!] Make sure you have:")
-            print("    1. Root privileges (sudo)")
-            print("    2. BCC installed: apt install python3-bpfcc")
-            print("    3. Kernel 4.x+ with BPF support")
+            logger.error(f"Failed to load eBPF: {e}")
+            logger.error("Make sure you have:")
+            logger.error("    1. Root privileges (sudo)")
+            logger.error("    2. BCC installed: apt install python3-bpfcc")
+            logger.error("    3. Kernel 4.x+ with BPF support")
             return
         
         # Start periodic summary thread if requested
@@ -88,18 +90,18 @@ class EBPFMonitor(PacketMonitor):
         # Main event loop
         start_time = time.time()
         try:
-            print("[*] eBPF monitoring active...")
+            logger.info("eBPF monitoring active...")
             while self.running:
                 # Poll for events (100ms timeout)
                 self.ebpf_loader.poll(timeout=0.1)
                 
                 # Check duration
                 if duration and (time.time() - start_time) >= duration:
-                    print(f"\n[*] Duration of {duration}s reached")
+                    logger.info(f"\nDuration of {duration}s reached")
                     break
                     
         except KeyboardInterrupt:
-            print("\n[*] Stopping eBPF monitor...")
+            logger.info("\nStopping eBPF monitor...")
             self.running = False
             self.stop_event.set()
         finally:
@@ -121,16 +123,16 @@ class EBPFMonitor(PacketMonitor):
             
             # Save final statistics
             try:
-                print("[*] Saving final statistics...")
+                logger.info("Saving final statistics...")
                 stats = self.get_statistics()
                 if stats:
                     self.save_statistics()
                 else:
-                    print("[*] No traffic captured")
+                    logger.info("No traffic captured")
             except KeyboardInterrupt:
-                print("[!] Interrupted during save - data may be incomplete")
+                logger.warning("Interrupted during save - data may be incomplete")
             
-            print("[*] eBPF monitoring stopped")
+            logger.info("eBPF monitoring stopped")
     
     def _handle_ebpf_event(self, event):
         """Handle connection event from eBPF"""
@@ -225,7 +227,7 @@ class EBPFMonitor(PacketMonitor):
                 if domain != "unknown":
                     self.traffic_stats[remote_ip]["domains"].add(domain)
             
-            # Store process info from eBPF (only for outgoing, no race condition!)
+            # Store process info from eBPF (only for outgoing)
             # For incoming traffic, we can't reliably identify the process
             if is_outgoing:
                 process_key = f"{local_ip}:{local_port}:{protocol}"
@@ -362,6 +364,4 @@ class EBPFMonitor(PacketMonitor):
             self.pid_container_cache[pid] = None
             return None
         except Exception:
-            # Cache negative result
-            self.pid_container_cache[pid] = None
             return None

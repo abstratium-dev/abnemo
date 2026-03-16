@@ -349,7 +349,7 @@ def test_ebpf_captures_traffic():
 export BCC_DEBUG=1
 
 # Run with verbose logging
-sudo python3 src/abnemo.py monitor --ebpf --summary-interval 5
+sudo python3 src/abnemo.py monitor --summary-interval 5 --log-level DEBUG
 
 # Check kernel logs
 sudo dmesg | tail -50

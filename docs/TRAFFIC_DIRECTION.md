@@ -158,10 +158,10 @@ sudo python3 src/abnemo.py monitor --web --traffic-direction all
 sudo python3 src/abnemo.py monitor --web --traffic-direction incoming
 ```
 
-### With eBPF
+### With Web Interface
 ```bash
-# Bidirectional with eBPF process tracking
-sudo python3 src/abnemo.py monitor --ebpf --web --traffic-direction bidirectional
+# Bidirectional with web interface
+sudo python3 src/abnemo.py monitor --web --traffic-direction bidirectional
 ```
 
 ---

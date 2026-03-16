@@ -145,26 +145,25 @@ echo ""
 echo "Step 6: Validating eBPF C program..."
 echo "----------------------------------------"
 
-EBPF_C_FILE="ebpf/network_monitor.c"
+# Check network monitor (the only eBPF program we use)
+EBPF_MONITOR_FILE="ebpf/network_monitor.c"
 
-if [ ! -f "$EBPF_C_FILE" ]; then
-    echo -e "${RED}ERROR: eBPF C program not found: $EBPF_C_FILE${NC}"
+if [ ! -f "$EBPF_MONITOR_FILE" ]; then
+    echo -e "${RED}ERROR: eBPF monitor program not found: $EBPF_MONITOR_FILE${NC}"
     exit 1
 fi
 
-echo "Found: $EBPF_C_FILE"
-
-# Check file size
-FILE_SIZE=$(stat -f%z "$EBPF_C_FILE" 2>/dev/null || stat -c%s "$EBPF_C_FILE" 2>/dev/null)
-echo "File size: $FILE_SIZE bytes"
+echo "Found: $EBPF_MONITOR_FILE"
+FILE_SIZE=$(stat -f%z "$EBPF_MONITOR_FILE" 2>/dev/null || stat -c%s "$EBPF_MONITOR_FILE" 2>/dev/null)
+echo "  File size: $FILE_SIZE bytes"
 
 # Basic syntax check (look for required functions)
-if grep -q "trace_tcp_sendmsg" "$EBPF_C_FILE" && \
-   grep -q "trace_udp_sendmsg" "$EBPF_C_FILE" && \
-   grep -q "BPF_PERF_OUTPUT" "$EBPF_C_FILE"; then
-    echo -e "${GREEN}✓ eBPF program structure looks good${NC}"
+if grep -q "trace_tcp_sendmsg" "$EBPF_MONITOR_FILE" && \
+   grep -q "trace_udp_sendmsg" "$EBPF_MONITOR_FILE" && \
+   grep -q "BPF_PERF_OUTPUT" "$EBPF_MONITOR_FILE"; then
+    echo -e "  ${GREEN}✓ Network monitor structure looks good${NC}"
 else
-    echo -e "${RED}ERROR: eBPF program missing required functions${NC}"
+    echo -e "  ${RED}ERROR: Network monitor missing required functions${NC}"
     exit 1
 fi
 echo ""
@@ -173,18 +172,17 @@ echo ""
 echo "Step 7: Test compiling eBPF program..."
 echo "----------------------------------------"
 
-echo "Attempting to compile eBPF program (this may take a moment)..."
+echo "Attempting to compile network monitor..."
 
 python3 << 'EOF'
 import sys
 try:
     from bcc import BPF
     
-    # Read the C program
+    # Compile network monitor
     with open('ebpf/network_monitor.c', 'r') as f:
         bpf_text = f.read()
     
-    # Try to compile (but don't attach)
     print("Compiling...")
     bpf = BPF(text=bpf_text)
     print("✓ Compilation successful!")

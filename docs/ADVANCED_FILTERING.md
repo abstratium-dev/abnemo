@@ -188,7 +188,7 @@ b.trace_print()
 
 **Advantages:**
 - ✅ Very fast - runs in kernel
-- ✅ No race conditions
+- ✅ Catches all processes
 - ✅ Minimal overhead
 - ✅ Can track all socket operations
 

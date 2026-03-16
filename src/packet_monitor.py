@@ -13,15 +13,18 @@ import threading
 import time
 import json
 import os
+import logging
 from src.isp_lookup import ISPLookup
+
+logger = logging.getLogger(__name__)
 
 
 class PacketMonitor:
     def __init__(self, log_dir="traffic_logs", port_mappings_file="port_mappings.txt", 
                  enable_isp_lookup=True, isp_api_key=None,
                  log_retention_days=30, log_max_size_mb=100, 
-                 continuous_log_interval=60, enable_process_tracking=False,
-                 top_n=20, isp_cache_ttl_hours=72, isp_debug=False,
+                 continuous_log_interval=60,
+                 top_n=20, isp_cache_ttl_hours=72,
                  traffic_direction="outgoing"):
         self.traffic_stats = defaultdict(lambda: {"bytes": 0, "packets": 0, "domains": set(), "ports": set(), "ip_type": None, "isp": None, "processes": {}})
         self.dns_cache = {}
@@ -35,8 +38,7 @@ class PacketMonitor:
         self.enable_isp_lookup = enable_isp_lookup
         self.isp_lookup = ISPLookup(
             api_key=isp_api_key, 
-            cache_ttl_hours=isp_cache_ttl_hours,
-            debug=isp_debug
+            cache_ttl_hours=isp_cache_ttl_hours
         ) if enable_isp_lookup else None
         self.total_packets_seen = 0
         self.total_packets_filtered = 0
@@ -52,13 +54,6 @@ class PacketMonitor:
         
         # Track outgoing connections for bidirectional/incoming filtering
         self.outgoing_connections = set()  # Set of remote IPs we've initiated connections to
-        
-        # Process tracking (optional, zero overhead when disabled)
-        self.enable_process_tracking = enable_process_tracking
-        self.process_tracker = None
-        if enable_process_tracking:
-            from src.process_tracker import ProcessTracker
-            self.process_tracker = ProcessTracker()
         
         # Log rotation settings
         self.log_retention_days = log_retention_days
@@ -94,7 +89,7 @@ class PacketMonitor:
                         except ValueError:
                             continue
         except Exception as e:
-            print(f"[!] Warning: Could not load port mappings: {e}")
+            logger.warning(f"Could not load port mappings: {e}")
     
     def get_port_description(self, port):
         """Get human-readable description for a port number"""
@@ -316,34 +311,6 @@ class PacketMonitor:
                 if domain != "unknown":
                     self.traffic_stats[remote_ip]["domains"].add(domain)
             
-            # Process tracking (only if enabled and we have local port for outgoing)
-            # For incoming traffic, we can't reliably identify the process
-            if self.enable_process_tracking and is_outgoing and local_port and protocol:
-                # Track all processes that access this IP (not just first one)
-                process_key = f"{local_ip}:{local_port}:{protocol}"
-                if process_key not in self.traffic_stats[remote_ip]["processes"]:
-                    process_info = self.process_tracker.identify_process(local_ip, local_port, protocol)
-                    
-                    if process_info:
-                        self.traffic_stats[remote_ip]["processes"][process_key] = process_info
-                    else:
-                        # Fallback: Try to identify Docker container by local IP
-                        # This handles short-lived processes in containers
-                        container_info = self.process_tracker.identify_container_by_ip(local_ip)
-                        if container_info:
-                            # Create a pseudo-process entry for the container
-                            self.traffic_stats[remote_ip]["processes"][process_key] = {
-                                'name': 'docker-container',
-                                'pid': 'N/A',
-                                'container': {
-                                    'name': container_info['name'],
-                                    'image': container_info.get('image', 'unknown'),
-                                    'id': container_info.get('id', 'unknown')
-                                }
-                            }
-                            # Debug: Uncomment to see when container is detected
-                            # print(f"[DEBUG] Container detected: {container_info['name']} (local_ip: {local_ip} -> remote_ip: {remote_ip})")
-            
             # Note: ISP lookup is deferred to avoid blocking packet capture
             # It will be performed when generating summaries or saving stats
             # Traffic direction is now bidirectional - both incoming and outgoing counted
@@ -401,12 +368,12 @@ class PacketMonitor:
         if top_n is not None:
             self.top_n = top_n
         
-        print(f"[*] Starting packet capture on interface: {interface or 'all'}")
+        logger.info(f"Starting packet capture on interface: {interface or 'all'}")
         if summary_interval:
-            print(f"[*] Periodic summaries every {summary_interval} seconds (showing top {self.top_n})")
+            logger.info(f"Periodic summaries every {summary_interval} seconds (showing top {self.top_n})")
         if duration is None and self.continuous_log_interval:
-            print(f"[*] Continuous mode: saving logs every {self.continuous_log_interval} seconds")
-        print("[*] Press Ctrl+C to stop monitoring\n")
+            logger.info(f"Continuous mode: saving logs every {self.continuous_log_interval} seconds")
+        logger.info("Press Ctrl+C to stop monitoring")
         
         # Start periodic summary thread if requested
         summary_thread = None
@@ -438,7 +405,7 @@ class PacketMonitor:
                 stop_filter=lambda x: not self.running  # Stop when running=False
             )
         except KeyboardInterrupt:
-            print("\n[*] Stopping packet capture...")
+            logger.info("\nStopping packet capture...")
             self.running = False
             self.stop_event.set()  # Wake up threads immediately
         finally:
@@ -456,16 +423,16 @@ class PacketMonitor:
             
             # Save final statistics
             try:
-                print("[*] Saving final statistics...")
+                logger.info("Saving final statistics...")
                 stats = self.get_statistics()
                 if stats:
                     self.save_statistics()
                 else:
-                    print("[*] No traffic captured")
+                    logger.info("No traffic captured")
             except KeyboardInterrupt:
-                print("[!] Interrupted during save - data may be incomplete")
+                logger.warning("Interrupted during save - data may be incomplete")
             
-            print("[*] Monitoring stopped")
+            logger.info("Monitoring stopped")
     
     def _periodic_summary_worker(self, interval):
         """Worker thread for periodic summaries"""
@@ -491,7 +458,7 @@ class PacketMonitor:
                 if stats:
                     self.save_statistics()
                     self.last_log_time = current_time
-                    print(f"[*] Continuous log saved ({len(stats)} IPs, {elapsed:.0f}s elapsed)")
+                    logger.info(f"Continuous log saved ({len(stats)} IPs, {elapsed:.0f}s elapsed)")
     
     def print_periodic_summary(self):
         """Print a brief periodic summary"""
@@ -676,7 +643,7 @@ class PacketMonitor:
                     total_size -= log_file['size']
                     log_files.remove(log_file)
                     files_deleted += 1
-                    print(f"[*] Deleted old log: {os.path.basename(log_file['path'])} (age: {age_seconds/86400:.1f} days)")
+                    logger.info(f"Deleted old log: {os.path.basename(log_file['path'])} (age: {age_seconds/86400:.1f} days)")
             
             # Delete oldest files if total size exceeds limit
             while total_size > max_size_bytes and log_files:
@@ -684,13 +651,13 @@ class PacketMonitor:
                 os.remove(oldest['path'])
                 total_size -= oldest['size']
                 files_deleted += 1
-                print(f"[*] Deleted log to reduce size: {os.path.basename(oldest['path'])} (total size: {total_size/1024/1024:.1f} MB)")
+                logger.info(f"Deleted log to reduce size: {os.path.basename(oldest['path'])} (total size: {total_size/1024/1024:.1f} MB)")
             
             if files_deleted > 0:
-                print(f"[*] Log cleanup: {files_deleted} file(s) deleted, {len(log_files)} remaining ({total_size/1024/1024:.1f} MB)")
+                logger.info(f"Log cleanup: {files_deleted} file(s) deleted, {len(log_files)} remaining ({total_size/1024/1024:.1f} MB)")
         
         except Exception as e:
-            print(f"[!] Warning: Log cleanup failed: {e}")
+            logger.warning(f"Log cleanup failed: {e}")
     
     def save_statistics(self, filename=None):
         """Save statistics to JSON file"""
@@ -715,14 +682,14 @@ class PacketMonitor:
         with open(filename, 'w') as f:
             json.dump(output, f, indent=2)
         
-        print(f"[+] Statistics saved to: {filename}")
+        logger.info(f"Statistics saved to: {filename}")
         
         # Trigger asynchronous warn-list analysis
         try:
             from src.filters import start_traffic_analysis
             start_traffic_analysis(filename)
         except Exception as e:
-            print(f"[!] Warning: Could not start warn-list analysis: {e}")
+            logger.warning(f"Could not start warn-list analysis: {e}")
         
         return filename
     
@@ -731,7 +698,7 @@ class PacketMonitor:
         stats = self.get_statistics()
         
         if not stats:
-            print("[!] No traffic data captured")
+            logger.warning("No traffic data captured")
             return
         
         # Sort by bytes transferred

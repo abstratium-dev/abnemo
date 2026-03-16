@@ -4,7 +4,7 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
 
 ## Today
 
-- document that i have to use `sudo ./scripts/abnemo.sh monitor --enable-process-tracking --summary-interval 10 --top 9999 --ebpf --web --web-port 30032 --isp-debug`
+- document that i have to use `sudo ./scripts/abnemo.sh monitor --summary-interval 10 --top 9999 --web --web-port 30032 --log-level DEBUG`
 
 - README.md should reference all the docs
 
@@ -51,10 +51,7 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
 
 - can we do a performance check?
 
-- what is enable_process_tracking and do we still need it?
-
 - simplify the code
-  - always require ebpf
   - remove code that i don't understand
   - no need for command to read files
 

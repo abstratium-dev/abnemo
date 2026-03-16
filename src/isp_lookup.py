@@ -9,24 +9,25 @@ import os
 import time
 import urllib.request
 import urllib.error
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ISPLookup:
-    def __init__(self, cache_file="isp_cache.json", api_key=None, cache_ttl_hours=72, debug=False):
+    def __init__(self, cache_file="isp_cache.json", api_key=None, cache_ttl_hours=72):
         self.cache_file = cache_file
         self.cache = {}
         self.api_key = api_key
         self.cache_ttl_hours = cache_ttl_hours
-        self.debug = debug
         self.cache_mtime = 0  # Track cache file modification time
         self.load_cache()
         self.last_request_time = 0
         # Rate limit depends on tier: free=45/min, pro=unlimited
         self.min_request_interval = 0.1 if api_key else 1.5
         
-        if self.debug:
-            print(f"[DEBUG] ISPLookup initialized: cache_file={cache_file}, api_key={'set' if api_key else 'not set'}, cache_ttl={cache_ttl_hours}h")
-            print(f"[DEBUG] Loaded {len(self.cache)} entries from cache")
+        logger.debug(f"ISPLookup initialized: cache_file={cache_file}, api_key={'set' if api_key else 'not set'}, cache_ttl={cache_ttl_hours}h")
+        logger.debug(f"Loaded {len(self.cache)} entries from cache")
     
     def load_cache(self):
         """Load ISP cache from file and clean expired entries"""
@@ -51,20 +52,18 @@ class ISPLookup:
                             self.cache[ip] = entry
                         else:
                             expired_count += 1
-                            if self.debug:
-                                print(f"[DEBUG] Expired cache entry for {ip} (age: {age_hours:.1f}h)")
+                            logger.debug(f"Expired cache entry for {ip} (age: {age_hours:.1f}h)")
                     else:
                         # Old format without timestamp - expire it
                         expired_count += 1
-                        if self.debug:
-                            print(f"[DEBUG] Removing old-format cache entry for {ip}")
+                        logger.debug(f"Removing old-format cache entry for {ip}")
                 
                 if expired_count > 0:
-                    print(f"[*] Cleaned {expired_count} expired cache entries")
+                    logger.info(f"Cleaned {expired_count} expired cache entries")
                     self.save_cache()  # Save cleaned cache
                     
             except Exception as e:
-                print(f"[!] Warning: Could not load ISP cache: {e}")
+                logger.warning(f"Could not load ISP cache: {e}")
                 self.cache = {}
     
     def save_cache(self):
@@ -74,13 +73,10 @@ class ISPLookup:
                 json.dump(self.cache, f, indent=2)
             # Update our mtime tracker
             self.cache_mtime = os.path.getmtime(self.cache_file)
-            if self.debug:
-                print(f"[DEBUG] Saved cache to {self.cache_file} ({len(self.cache)} entries)")
+            logger.debug(f"Saved cache to {self.cache_file} ({len(self.cache)} entries)")
         except Exception as e:
-            print(f"[!] Warning: Could not save ISP cache: {e}")
-            if self.debug:
-                import traceback
-                traceback.print_exc()
+            logger.warning(f"Could not save ISP cache: {e}")
+            logger.debug("ISP cache save error details:", exc_info=True)
     
     def lookup_isp(self, ip_address):
         """
@@ -89,22 +85,19 @@ class ISPLookup:
         """
         # Skip special/reserved IPs that will never have ISP info
         if ip_address in ('0.0.0.0', '255.255.255.255', '::', 'ff02::1', 'ff02::2'):
-            if self.debug:
-                print(f"[DEBUG] Skipping special IP: {ip_address}")
+            logger.debug(f"Skipping special IP: {ip_address}")
             return None
         
         # Check if cache file was modified by another instance and reload if needed
         if os.path.exists(self.cache_file):
             current_mtime = os.path.getmtime(self.cache_file)
             if current_mtime > self.cache_mtime:
-                if self.debug:
-                    print(f"[DEBUG] Cache file was updated by another instance, reloading...")
+                logger.debug(f"Cache file was updated by another instance, reloading...")
                 self.load_cache()
         
         # Check cache first
         if ip_address in self.cache:
-            if self.debug:
-                print(f"[DEBUG] Cache HIT for {ip_address}")
+            logger.debug(f"Cache HIT for {ip_address}")
             # Return the data part (without cached_at timestamp)
             cached_entry = self.cache[ip_address]
             if isinstance(cached_entry, dict) and 'data' in cached_entry:
@@ -113,9 +106,8 @@ class ISPLookup:
                 # Old format - return as-is but will be updated on next lookup
                 return cached_entry
         
-        if self.debug:
-            print(f"[DEBUG] Cache MISS for {ip_address} - making API request")
-            print(f"[DEBUG] Current cache has {len(self.cache)} entries")
+        logger.debug(f"Cache MISS for {ip_address} - making API request")
+        logger.debug(f"Current cache has {len(self.cache)} entries")
         
         # Rate limiting
         current_time = time.time()
@@ -160,15 +152,13 @@ class ISPLookup:
                 self.cache[ip_address] = cache_entry
                 self.save_cache()
                 
-                if self.debug:
-                    print(f"[DEBUG] Cached SUCCESS for {ip_address}: {result.get('org', 'Unknown')}")
+                logger.debug(f"Cached SUCCESS for {ip_address}: {result.get('org', 'Unknown')}")
                 
                 return result
             else:
                 # API returned an error - cache the failure to avoid repeated lookups
                 error_msg = data.get('message', 'Unknown error')
-                if self.debug:
-                    print(f"[DEBUG] API error for {ip_address}: {error_msg}")
+                logger.debug(f"API error for {ip_address}: {error_msg}")
                 
                 # Cache the failure (with None as data)
                 cache_entry = {
@@ -179,14 +169,12 @@ class ISPLookup:
                 self.cache[ip_address] = cache_entry
                 self.save_cache()
                 
-                if self.debug:
-                    print(f"[DEBUG] Cached FAILURE for {ip_address} to avoid retries")
+                logger.debug(f"Cached FAILURE for {ip_address} to avoid retries")
                 
                 return None
                 
         except urllib.error.URLError as e:
-            if self.debug:
-                print(f"[DEBUG] Network error for {ip_address}: {e}")
+            logger.debug(f"Network error for {ip_address}: {e}")
             # Cache network failures too (might be temporary, but avoid hammering)
             cache_entry = {
                 'data': None,
@@ -197,8 +185,7 @@ class ISPLookup:
             self.save_cache()
             return None
         except Exception as e:
-            if self.debug:
-                print(f"[DEBUG] Unexpected error for {ip_address}: {e}")
+            logger.debug(f"Unexpected error for {ip_address}: {e}")
             # Cache unexpected errors too
             cache_entry = {
                 'data': None,

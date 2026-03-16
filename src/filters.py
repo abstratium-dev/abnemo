@@ -6,17 +6,21 @@ Handles both accepted filters (hide matching) and warn-list filters (highlight m
 
 import os
 import json
-import logging
 import uuid
 import re
-import smtplib
+import logging
 import socket
+import smtplib
+from datetime import datetime, timezone
+from threading import Thread, Lock
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timezone
-from threading import Thread
 
 logger = logging.getLogger(__name__)
+
+# Track which files have been analyzed to avoid duplicate emails
+_analyzed_files = set()
+_analyzed_files_lock = Lock()
 
 
 def get_filters_directory():
@@ -176,55 +180,99 @@ def delete_regex_filter(filter_id, is_warnlist=False):
 
 
 def check_warnlist_matches(traffic_data):
-    """Check if traffic data matches any warn-list filters
+    """Check traffic data against warn-list filters
     
     Args:
-        traffic_data: Dictionary with traffic_by_ip data
+        traffic_data: Dictionary with 'traffic_by_ip' key containing IP data
     
     Returns:
-        List of matches: [{'filter': filter_obj, 'matched_ips': [ip1, ip2, ...]}]
+        List of match dictionaries with 'filter', 'matched_ips', and 'details' keys
     """
-    warnlist = load_regex_warnlist()
-    if not warnlist:
+    warnlist_filters = load_regex_warnlist()
+    if not warnlist_filters:
         return []
     
     matches = []
+    traffic_by_ip = traffic_data.get('traffic_by_ip', {})
     
-    for filter_obj in warnlist:
-        pattern = filter_obj.get('pattern', '')
+    for filter_obj in warnlist_filters:
+        pattern = filter_obj.get('pattern')
         if not pattern:
             continue
         
         try:
             regex = re.compile(pattern)
-            matched_ips = []
+            matched_details = {}  # IP -> details dict
             
-            # Check against all IPs and their associated data
-            traffic_by_ip = traffic_data.get('traffic_by_ip', {})
-            for ip, stats in traffic_by_ip.items():
+            for ip, ip_data in traffic_by_ip.items():
+                matched = False
+                match_reason = []
+                
                 # Check IP address
                 if regex.search(ip):
-                    matched_ips.append(ip)
-                    continue
+                    matched = True
+                    match_reason.append('IP address')
                 
                 # Check domains
-                for domain in stats.get('domains', []):
-                    if regex.search(domain):
-                        matched_ips.append(ip)
-                        break
+                domains = ip_data.get('domains', [])
+                matched_domains = [d for d in domains if regex.search(str(d))]
+                if matched_domains:
+                    matched = True
+                    match_reason.append(f'Domain: {matched_domains[0]}')
+                
+                # Check ISP
+                isp = ip_data.get('isp')
+                if isp and regex.search(str(isp)):
+                    matched = True
+                    match_reason.append(f'ISP: {isp}')
+                
+                # Check ports
+                ports = ip_data.get('ports', [])
+                matched_ports = [p for p in ports if regex.search(str(p))]
+                if matched_ports:
+                    matched = True
+                    match_reason.append(f'Port: {matched_ports[0]}')
+                
+                # Check processes
+                processes = ip_data.get('processes', {})
+                # Handle both dict (from live data) and list (from saved logs)
+                if isinstance(processes, list):
+                    # Convert list to dict for uniform processing
+                    processes_dict = {f"proc_{i}": proc for i, proc in enumerate(processes)}
+                    matched_procs = [proc.get('name', str(proc)) for proc in processes if regex.search(str(proc.get('name', '')))]
                 else:
-                    # Check ISP/org
-                    isp = stats.get('isp', {})
-                    if isp:
-                        org = isp.get('org', '')
-                        if org and regex.search(org):
-                            matched_ips.append(ip)
-                            continue
+                    # Dict format
+                    matched_procs = [proc for proc in processes.keys() if regex.search(str(proc))]
+                
+                if matched_procs:
+                    matched = True
+                    match_reason.append(f'Process: {matched_procs[0]}')
+                
+                if matched:
+                    # Handle processes field - keep original format
+                    processes_field = ip_data.get('processes', {})
+                    if isinstance(processes_field, list):
+                        processes_output = processes_field
+                    else:
+                        processes_output = dict(processes_field)
+                    
+                    matched_details[ip] = {
+                        'ip': ip,
+                        'domains': list(ip_data.get('domains', [])),
+                        'isp': ip_data.get('isp'),
+                        'ports': list(ip_data.get('ports', [])),
+                        'processes': processes_output,
+                        'bytes': ip_data.get('bytes', 0),
+                        'packets': ip_data.get('packets', 0),
+                        'ip_type': ip_data.get('ip_type'),
+                        'match_reason': ', '.join(match_reason)
+                    }
             
-            if matched_ips:
+            if matched_details:
                 matches.append({
                     'filter': filter_obj,
-                    'matched_ips': list(set(matched_ips))  # Deduplicate
+                    'matched_ips': list(matched_details.keys()),
+                    'details': matched_details
                 })
         
         except re.error as e:
@@ -234,11 +282,12 @@ def check_warnlist_matches(traffic_data):
     return matches
 
 
-def send_warnlist_email(matches, hostname=None):
+def send_warnlist_email(matches, log_file_path, hostname=None):
     """Send email notification about warn-list matches
     
     Args:
         matches: List of match dictionaries from check_warnlist_matches
+        log_file_path: Absolute path to the traffic log file
         hostname: Name of the computer (defaults to socket.gethostname())
     
     Returns:
@@ -265,20 +314,57 @@ def send_warnlist_email(matches, hostname=None):
     
     body_lines = [
         f'Warn-list traffic has been detected on {hostname}.',
+        f'Traffic log file: {log_file_path}',
         '',
-        'The following filters matched:',
+        'IMPORTANT: This traffic has been marked as needing attention and was NOT automatically rejected.',
+        '',
+        '=' * 80,
         ''
     ]
     
     for match in matches:
         filter_obj = match['filter']
-        matched_ips = match['matched_ips']
+        details = match.get('details', {})
         pattern = filter_obj.get('pattern', 'N/A')
         description = filter_obj.get('description', 'No description')
         
-        body_lines.append(f'Filter: {pattern}')
+        body_lines.append(f'FILTER: {pattern}')
         body_lines.append(f'Description: {description}')
-        body_lines.append(f'Matched IPs: {", ".join(matched_ips)}')
+        body_lines.append('')
+        
+        for ip, ip_details in details.items():
+            body_lines.append(f'  IP: {ip}')
+            body_lines.append(f'    Match Reason: {ip_details.get("match_reason", "N/A")}')
+            body_lines.append(f'    Type: {ip_details.get("ip_type", "N/A")}')
+            
+            domains = ip_details.get('domains', [])
+            if domains:
+                body_lines.append(f'    Domains: {", ".join(str(d) for d in domains)}')
+            
+            isp = ip_details.get('isp')
+            if isp:
+                body_lines.append(f'    ISP: {isp}')
+            
+            ports = ip_details.get('ports', [])
+            if ports:
+                body_lines.append(f'    Ports: {", ".join(str(p) for p in ports)}')
+            
+            processes = ip_details.get('processes', {})
+            if processes:
+                body_lines.append(f'    Processes:')
+                # Handle both dict and list formats
+                if isinstance(processes, list):
+                    for proc_info in processes:
+                        proc_name = proc_info.get('name', 'unknown')
+                        body_lines.append(f'      - {proc_name}')
+                else:
+                    for proc_name, proc_info in processes.items():
+                        body_lines.append(f'      - {proc_name}: {proc_info.get("bytes", 0)} bytes, {proc_info.get("packets", 0)} packets')
+            
+            body_lines.append(f'    Total: {ip_details.get("bytes", 0)} bytes, {ip_details.get("packets", 0)} packets')
+            body_lines.append('')
+        
+        body_lines.append('-' * 80)
         body_lines.append('')
     
     body_lines.append('This is an automated notification from ABNEMO.')
@@ -295,23 +381,32 @@ def send_warnlist_email(matches, hostname=None):
     try:
         smtp_port = int(smtp_port)
         
+        logger.debug(f'Attempting to send email to {smtp_to} via {smtp_host}:{smtp_port} (TLS: {smtp_tls})')
+        
         if smtp_tls:
             # Use STARTTLS
+            logger.debug(f'Connecting to SMTP server with STARTTLS')
             server = smtplib.SMTP(smtp_host, smtp_port, timeout=30)
             server.starttls()
         else:
             # Use SSL/TLS directly
+            logger.debug(f'Connecting to SMTP server with SSL/TLS')
             server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30)
         
+        logger.debug(f'Logging in as {smtp_username}')
         server.login(smtp_username, smtp_password)
+        
+        logger.debug(f'Sending email message')
         server.send_message(msg)
         server.quit()
         
         logger.info(f'Warn-list email sent to {smtp_to}')
+        logger.debug(f'Email subject: {subject}')
         return True
     
     except Exception as e:
         logger.error(f'Failed to send warn-list email: {e}')
+        logger.debug(f'Email error details:', exc_info=True)
         return False
 
 
@@ -319,28 +414,62 @@ def analyze_traffic_file_async(log_file_path):
     """Asynchronously analyze a traffic log file for warn-list matches
     
     This function is meant to be called in a background thread.
+    Only analyzes each file once to avoid duplicate emails.
     
     Args:
         log_file_path: Path to the traffic log JSON file
     """
+    # Get absolute path
+    abs_path = os.path.abspath(log_file_path)
+    
+    # Check if already analyzed
+    with _analyzed_files_lock:
+        if abs_path in _analyzed_files:
+            logger.debug(f'File {abs_path} already analyzed, skipping')
+            return
+        _analyzed_files.add(abs_path)
+    
     try:
-        with open(log_file_path, 'r') as f:
+        logger.debug(f'Starting analysis of traffic file: {abs_path}')
+        with open(abs_path, 'r') as f:
             data = json.load(f)
         
+        logger.debug(f'Loaded traffic file, data type: {type(data).__name__}')
+        
+        # Handle both list and dict formats
+        if isinstance(data, list):
+            # If it's a list, convert to expected format
+            logger.debug(f'Traffic file {abs_path} is in list format, skipping warn-list analysis')
+            # Lists are typically raw packet data, skip warn-list analysis
+            return
+        
+        # Ensure it has the expected structure
+        if not isinstance(data, dict):
+            logger.warning(f'Traffic file {abs_path} has unexpected format (type: {type(data).__name__}), skipping')
+            return
+        
+        if 'traffic_by_ip' not in data:
+            logger.warning(f'Traffic file {abs_path} missing "traffic_by_ip" key, available keys: {list(data.keys())}, skipping')
+            return
+        
+        logger.debug(f'Checking warn-list matches for {len(data.get("traffic_by_ip", {}))} IPs')
         matches = check_warnlist_matches(data)
         
         if matches:
-            logger.warning(f'Warn-list matches found in {log_file_path}')
+            logger.warning(f'Warn-list matches found in {abs_path}')
             for match in matches:
                 filter_obj = match['filter']
                 matched_ips = match['matched_ips']
                 logger.warning(f'  Filter "{filter_obj.get("pattern")}" matched IPs: {", ".join(matched_ips)}')
             
-            # Send email notification
-            send_warnlist_email(matches)
+            # Send email notification with absolute path
+            send_warnlist_email(matches, abs_path)
     
     except Exception as e:
-        logger.error(f'Error analyzing traffic file {log_file_path}: {e}')
+        logger.error(f'Error analyzing traffic file {abs_path}: {e}', exc_info=True)
+        # Remove from analyzed set on error so it can be retried
+        with _analyzed_files_lock:
+            _analyzed_files.discard(abs_path)
 
 
 def start_traffic_analysis(log_file_path):

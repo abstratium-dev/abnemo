@@ -61,7 +61,6 @@ ExecStart=/usr/bin/python3 /opt/abnemo/abnemo.py monitor \
     --web \
     --web-port 5000 \
     --isp-cache-ttl 72 \
-    --enable-process-tracking \
     --continuous-log-interval 60 \
     --log-retention-days 30 \
     --log-max-size-mb 500
@@ -181,25 +180,14 @@ ExecStart=/usr/bin/python3 /opt/abnemo/abnemo.py monitor \
     --continuous-log-interval 60
 ```
 
-### With eBPF (Zero-Overhead Process Tracking)
-```bash
-ExecStart=/usr/bin/python3 /opt/abnemo/abnemo.py monitor \
-    --log-dir /var/lib/abnemo/traffic_logs \
-    --web \
-    --web-port 5000 \
-    --ebpf \
-    --continuous-log-interval 60
-```
-
 ### With ISP Lookup and Debug
 ```bash
 ExecStart=/usr/bin/python3 /opt/abnemo/abnemo.py monitor \
     --log-dir /var/lib/abnemo/traffic_logs \
     --web \
     --web-port 5000 \
-    --enable-process-tracking \
     --isp-cache-ttl 72 \
-    --isp-debug \
+    --log-level INFO \
     --continuous-log-interval 60
 ```
 
