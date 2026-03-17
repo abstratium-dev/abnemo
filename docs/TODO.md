@@ -8,6 +8,8 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
 
 - README.md should reference all the docs
 
+- remove the old c file
+
 - tests
   - fix tests in the test directory and its subdirectory. no idea which are real tests!
   - run all and check coverage

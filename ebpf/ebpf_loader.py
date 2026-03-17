@@ -58,18 +58,18 @@ class EBPFLoader:
         
         print("[*] Attaching eBPF probes...")
         
-        # Attach kprobes to kernel functions
-        # These intercept calls to tcp_sendmsg/udp_sendmsg
+        # Attach kprobes to kernel functions for actual byte tracking
         try:
             self.bpf.attach_kprobe(event="tcp_sendmsg", fn_name="trace_tcp_sendmsg")
-            self.bpf.attach_kprobe(event="tcp_connect", fn_name="trace_tcp_connect")
-            print("[+] Attached to TCP hooks")
+            self.bpf.attach_kretprobe(event="tcp_recvmsg", fn_name="trace_tcp_recvmsg")
+            print("[+] Attached to TCP send/recv hooks")
         except Exception as e:
             print(f"[!] Warning: Could not attach to TCP hooks: {e}")
         
         try:
             self.bpf.attach_kprobe(event="udp_sendmsg", fn_name="trace_udp_sendmsg")
-            print("[+] Attached to UDP hooks")
+            self.bpf.attach_kretprobe(event="udp_recvmsg", fn_name="trace_udp_recvmsg")
+            print("[+] Attached to UDP send/recv hooks")
         except Exception as e:
             print(f"[!] Warning: Could not attach to UDP hooks: {e}")
         
@@ -80,21 +80,7 @@ class EBPFLoader:
         
     def _handle_event(self, cpu, data, size):
         """Handle events from eBPF"""
-        # Parse event structure
-        # struct connection_event_t {
-        #     u32 pid;           // 0-3
-        #     char comm[16];     // 4-19
-        #     u32 saddr;         // 20-23
-        #     u32 daddr;         // 24-27
-        #     u16 sport;         // 28-29
-        #     u16 dport;         // 30-31
-        #     u8 protocol;       // 32
-        #     u64 cgroup_id;     // 33-40
-        #     u32 saddr_v6[4];   // 41-56
-        #     u32 daddr_v6[4];   // 57-72
-        #     u8 ip_version;     // 73
-        # }
-        
+        # Parse event structure: struct traffic_event_t
         event = self.bpf["events"].event(data)
         
         # Extract fields
@@ -117,7 +103,7 @@ class EBPFLoader:
         sport = event.sport
         dport = event.dport
         
-        # Create event dict
+        # Create event dict with actual byte count
         event_data = {
             'pid': pid,
             'comm': comm,
@@ -127,7 +113,8 @@ class EBPFLoader:
             'dport': dport,
             'protocol': protocol,
             'cgroup_id': cgroup_id,
-            'ip_version': ip_version
+            'ip_version': ip_version,
+            'bytes': event.bytes  # Actual bytes from sendmsg/recvmsg
         }
         
         # Call user callback

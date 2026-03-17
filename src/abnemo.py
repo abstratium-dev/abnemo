@@ -70,7 +70,8 @@ def monitor_command(args):
         continuous_log_interval=args.continuous_log_interval,
         top_n=args.top,
         isp_cache_ttl_hours=args.isp_cache_ttl,
-        traffic_direction=args.traffic_direction
+        traffic_direction=args.traffic_direction,
+        extra_verbose_for_testing=args.extraverbosefortesting
     )
     
     try:
@@ -258,6 +259,8 @@ Examples:
                                     'incoming (unsolicited incoming only, e.g., server traffic), '
                                     'bidirectional (responses to outgoing connections), '
                                     'all (everything)')
+    monitor_parser.add_argument('--extraverbosefortesting', action='store_true',
+                               help='Log every packet to /tmp/verification_abnemo_packets.log for testing')
     
     # List logs command
     list_parser = subparsers.add_parser('list-logs', help='List all captured traffic logs')

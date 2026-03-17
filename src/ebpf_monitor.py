@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class EBPFMonitor(PacketMonitor):
     """Network monitor using eBPF for process tracking"""
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, extra_verbose_for_testing=False, **kwargs):
         # Initialize parent PacketMonitor class
         super().__init__(*args, **kwargs)
         
@@ -37,6 +37,15 @@ class EBPFMonitor(PacketMonitor):
         self.cgroup_container_cache = {}
         # Cache for pid -> container name mapping
         self.pid_container_cache = {}
+        
+        # Extra verbose logging for testing
+        self.extra_verbose_for_testing = extra_verbose_for_testing
+        self.packet_log_file = None
+        if self.extra_verbose_for_testing:
+            self.packet_log_file = open("/tmp/verification_abnemo_packets.log", "w")
+            self.packet_log_file.write("ABNEMO PACKET LOG\n")
+            self.packet_log_file.write("=" * 80 + "\n\n")
+            self.packet_count = 0
         
     def start_monitoring_ebpf(self, interface=None, duration=None, summary_interval=None, top_n=None):
         """Start eBPF-based monitoring"""
@@ -219,13 +228,26 @@ class EBPFMonitor(PacketMonitor):
         
         self.total_packets_seen += 1
         
+        # Get actual byte count from event
+        actual_bytes = event.get('bytes', 0)
+        
+        # Extra verbose logging for testing
+        if self.extra_verbose_for_testing and self.packet_log_file:
+            self.packet_count += 1
+            direction = "OUTGOING" if is_outgoing else "INCOMING"
+            # comm might be bytes or str depending on BCC version
+            comm_str = comm.decode('utf-8', errors='ignore') if isinstance(comm, bytes) else comm
+            self.packet_log_file.write(
+                f"Packet #{self.packet_count}: {src_ip:15}:{src_port:5} → {dst_ip:15}:{dst_port:5} | "
+                f"{actual_bytes:5} bytes | {direction} | PID:{pid} ({comm_str})\n"
+            )
+            self.packet_log_file.write(f"         ✓ COUNTED (remote IP: {remote_ip})\n")
+            self.packet_log_file.flush()
+        
         # Update traffic stats for the remote IP
         with self.lock:
-            # We don't have packet size from eBPF, so estimate
-            # (eBPF tracks connections, not individual packets)
-            estimated_size = 64  # Minimum packet size
-            
-            self.traffic_stats[remote_ip]["bytes"] += estimated_size
+            # Use actual byte count from eBPF
+            self.traffic_stats[remote_ip]["bytes"] += actual_bytes
             self.traffic_stats[remote_ip]["packets"] += 1
             
             if remote_port:

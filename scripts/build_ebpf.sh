@@ -145,25 +145,24 @@ echo ""
 echo "Step 6: Validating eBPF C program..."
 echo "----------------------------------------"
 
-# Check network monitor (the only eBPF program we use)
-EBPF_MONITOR_FILE="ebpf/network_monitor.c"
+EBPF_FILE="ebpf/network_monitor.c"
 
-if [ ! -f "$EBPF_MONITOR_FILE" ]; then
-    echo -e "${RED}ERROR: eBPF monitor program not found: $EBPF_MONITOR_FILE${NC}"
+if [ ! -f "$EBPF_FILE" ]; then
+    echo -e "${RED}ERROR: eBPF program not found: $EBPF_FILE${NC}"
     exit 1
 fi
 
-echo "Found: $EBPF_MONITOR_FILE"
-FILE_SIZE=$(stat -f%z "$EBPF_MONITOR_FILE" 2>/dev/null || stat -c%s "$EBPF_MONITOR_FILE" 2>/dev/null)
+echo "Found: $EBPF_FILE"
+FILE_SIZE=$(stat -f%z "$EBPF_FILE" 2>/dev/null || stat -c%s "$EBPF_FILE" 2>/dev/null)
 echo "  File size: $FILE_SIZE bytes"
 
 # Basic syntax check (look for required functions)
-if grep -q "trace_tcp_sendmsg" "$EBPF_MONITOR_FILE" && \
-   grep -q "trace_udp_sendmsg" "$EBPF_MONITOR_FILE" && \
-   grep -q "BPF_PERF_OUTPUT" "$EBPF_MONITOR_FILE"; then
-    echo -e "  ${GREEN}✓ Network monitor structure looks good${NC}"
+if grep -q "trace_tcp_sendmsg" "$EBPF_FILE" && \
+   grep -q "trace_udp_sendmsg" "$EBPF_FILE" && \
+   grep -q "BPF_PERF_OUTPUT" "$EBPF_FILE"; then
+    echo -e "  ${GREEN}✓ Structure looks good${NC}"
 else
-    echo -e "  ${RED}ERROR: Network monitor missing required functions${NC}"
+    echo -e "  ${RED}ERROR: Missing required functions${NC}"
     exit 1
 fi
 echo ""
@@ -172,22 +171,17 @@ echo ""
 echo "Step 7: Test compiling eBPF program..."
 echo "----------------------------------------"
 
-echo "Attempting to compile network monitor..."
-
+echo "Compiling network_monitor.c (accurate byte counting)..."
 python3 << 'EOF'
 import sys
 try:
     from bcc import BPF
     
-    # Compile network monitor
     with open('ebpf/network_monitor.c', 'r') as f:
         bpf_text = f.read()
     
-    print("Compiling...")
     bpf = BPF(text=bpf_text)
     print("✓ Compilation successful!")
-    
-    # Cleanup
     bpf.cleanup()
     sys.exit(0)
     
@@ -212,12 +206,15 @@ echo "========================================="
 echo -e "${GREEN}✓ All checks passed!${NC}"
 echo ""
 echo "eBPF module is ready to use."
+echo "  - Tracks actual bytes sent/received per packet"
+echo "  - Provides accurate traffic measurement"
+echo "  - Includes process and container identification"
 echo ""
 echo "Usage:"
-echo "  sudo ./scripts/abnemo.sh monitor --ebpf"
+echo "  sudo ./scripts/abnemo.sh monitor"
 echo ""
 echo "Or:"
-echo "  sudo python3 src/abnemo.py monitor --ebpf --summary-interval 10"
+echo "  sudo python3 src/abnemo.py monitor --summary-interval 10"
 echo ""
 echo "Note: eBPF requires root privileges to attach kernel probes."
 echo "========================================="
