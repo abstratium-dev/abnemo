@@ -15,4 +15,4 @@ isp_cache.json
 coverage.xml
 
 
-regex_filters*.json
+*list_filters*.json

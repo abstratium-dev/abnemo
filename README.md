@@ -244,6 +244,45 @@ Abnemo uses Python's standard logging framework. You can control the verbosity o
 
 The `--log-level` flag is available for all commands: `monitor`, `list-logs`, `web`, and `iptables-tree`.
 
+#### Traffic Filtering System
+
+Abnemo provides two types of filters for managing traffic visibility and alerts:
+
+**Accept-List Filters** (Hide matching traffic):
+- Hide known-good traffic from the web interface
+- Useful for filtering out routine connections (local network, DNS, etc.)
+- Prevents email notifications for accepted traffic
+
+**Warn-List Filters** (Highlight and alert on matching traffic):
+- Highlight suspicious or important traffic in the web interface
+- Trigger email notifications when matches are detected
+- **Important:** Email notifications are NOT sent if traffic also matches any accept-list filter
+
+**Key Behavior:**
+- Accept-list takes precedence over warn-list
+- If traffic matches BOTH lists, it is considered accepted (no email sent)
+- This allows broad warn-list patterns with specific accept-list exceptions
+
+**Example Use Case:**
+```bash
+# Warn-list: Alert on SSH connections (port 22)
+# Accept-list: Except from trusted IP range 203.0.113.*
+# Result: Email notifications for SSH, except from trusted IPs
+```
+
+**Email Configuration:**
+```bash
+export ABNEMO_SMTP_HOST=smtp.example.com
+export ABNEMO_SMTP_PORT=587
+export ABNEMO_SMTP_USERNAME=your_username
+export ABNEMO_SMTP_PASSWORD=your_password
+export ABNEMO_SMTP_FROM=abnemo@example.com
+export ABNEMO_SMTP_TO=admin@example.com
+export ABNEMO_SMTP_TLS=true
+```
+
+See `docs/FILTER_SYSTEM.md` for detailed documentation, examples, and best practices.
+
 #### Live Web Interface
 
 Monitor traffic in real-time with a beautiful web dashboard:

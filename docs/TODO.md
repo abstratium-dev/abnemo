@@ -8,7 +8,7 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
 
 - README.md should reference all the docs
 
-- remove the old c file
+- document verification script and link that to DESIGN.md to say why we don't capture all the data
 
 - tests
   - fix tests in the test directory and its subdirectory. no idea which are real tests!
@@ -48,9 +48,6 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
     - ABNEMO_SMTP_TO
     - ABNEMO_SMTP_TLS
 
-- read and verify: VERIFICATION_GUIDE.md
-  - write a program that does this verification for us
-
 - can we do a performance check?
 
 - simplify the code
@@ -62,8 +59,7 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
 
 - BACKUP and restore of iptables!!!!
 - is python performance an issue?
-- run this in docker? how could it access the host?
 - what other products do what this app does and what else do they do?
-
+- docker - see docker md file
 
 ## Later

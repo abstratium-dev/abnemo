@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Filters Module - Regex filter management for traffic filtering
-Handles both accepted filters (hide matching) and warn-list filters (highlight matching)
+Filters Module - Accept-list filter management for traffic filtering
+Handles both accept-list filters (hide matching) and warn-list filters (highlight matching)
 """
 
 import os
@@ -38,21 +38,21 @@ def get_filters_directory():
     return project_root
 
 
-def get_regex_filters_file():
-    """Get the path to the accepted regex filters JSON file"""
+def get_accept_list_filters_file():
+    """Get the path to the accept-list filters JSON file"""
     filters_dir = get_filters_directory()
-    return os.path.join(filters_dir, 'regex_filters_accepted.json')
+    return os.path.join(filters_dir, 'accept_list_filters.json')
 
 
-def get_regex_warnlist_file():
-    """Get the path to the warn-list regex filters JSON file"""
+def get_warnlist_filters_file():
+    """Get the path to the warn-list filters JSON file"""
     filters_dir = get_filters_directory()
-    return os.path.join(filters_dir, 'regex_filters_warnlist.json')
+    return os.path.join(filters_dir, 'warnlist_filters.json')
 
 
-def load_regex_filters():
-    """Load accepted regex filters from JSON file"""
-    filters_file = get_regex_filters_file()
+def load_accept_list_filters():
+    """Load accept-list filters from JSON file"""
+    filters_file = get_accept_list_filters_file()
     if not os.path.exists(filters_file):
         return []
     
@@ -61,13 +61,13 @@ def load_regex_filters():
             data = json.load(f)
             return data.get('filters', [])
     except Exception as e:
-        logger.error(f'Error loading regex filters: {e}')
+        logger.error(f'Error loading accept-list filters: {e}')
         return []
 
 
-def load_regex_warnlist():
-    """Load warn-list regex filters from JSON file"""
-    filters_file = get_regex_warnlist_file()
+def load_warnlist_filters():
+    """Load warn-list filters from JSON file"""
+    filters_file = get_warnlist_filters_file()
     if not os.path.exists(filters_file):
         return []
     
@@ -80,22 +80,22 @@ def load_regex_warnlist():
         return []
 
 
-def save_regex_filter(filter_data, is_warnlist=False):
-    """Save a new regex filter and return its ID
+def save_filter(filter_data, is_warnlist=False):
+    """Save a new filter and return its ID
     
     Args:
         filter_data: Dictionary with pattern, description, etc.
-        is_warnlist: If True, save to warn-list file, else to accepted filters file
+        is_warnlist: If True, save to warn-list file, else to accept-list filters file
     
     Returns:
         filter_id: UUID string
     """
     if is_warnlist:
-        filters = load_regex_warnlist()
-        filters_file = get_regex_warnlist_file()
+        filters = load_warnlist_filters()
+        filters_file = get_warnlist_filters_file()
     else:
-        filters = load_regex_filters()
-        filters_file = get_regex_filters_file()
+        filters = load_accept_list_filters()
+        filters_file = get_accept_list_filters_file()
     
     # Generate a unique ID
     filter_id = str(uuid.uuid4())
@@ -112,23 +112,23 @@ def save_regex_filter(filter_data, is_warnlist=False):
     return filter_id
 
 
-def update_regex_filter(filter_id, update_data, is_warnlist=False):
-    """Update an existing regex filter
+def update_filter(filter_id, update_data, is_warnlist=False):
+    """Update an existing filter
     
     Args:
         filter_id: UUID of the filter to update
         update_data: Dictionary with fields to update
-        is_warnlist: If True, update in warn-list file, else in accepted filters file
+        is_warnlist: If True, update in warn-list file, else in accept-list filters file
     
     Returns:
         Updated filter object or None if not found
     """
     if is_warnlist:
-        filters = load_regex_warnlist()
-        filters_file = get_regex_warnlist_file()
+        filters = load_warnlist_filters()
+        filters_file = get_warnlist_filters_file()
     else:
-        filters = load_regex_filters()
-        filters_file = get_regex_filters_file()
+        filters = load_accept_list_filters()
+        filters_file = get_accept_list_filters_file()
     
     for filter_obj in filters:
         if filter_obj.get('id') == filter_id:
@@ -150,22 +150,22 @@ def update_regex_filter(filter_id, update_data, is_warnlist=False):
     return None
 
 
-def delete_regex_filter(filter_id, is_warnlist=False):
-    """Delete a regex filter
+def delete_filter(filter_id, is_warnlist=False):
+    """Delete a filter
     
     Args:
         filter_id: UUID of the filter to delete
-        is_warnlist: If True, delete from warn-list file, else from accepted filters file
+        is_warnlist: If True, delete from warn-list file, else from accept-list filters file
     
     Returns:
         True if deleted, False if not found
     """
     if is_warnlist:
-        filters = load_regex_warnlist()
-        filters_file = get_regex_warnlist_file()
+        filters = load_warnlist_filters()
+        filters_file = get_warnlist_filters_file()
     else:
-        filters = load_regex_filters()
-        filters_file = get_regex_filters_file()
+        filters = load_accept_list_filters()
+        filters_file = get_accept_list_filters_file()
     
     original_count = len(filters)
     filters = [f for f in filters if f.get('id') != filter_id]
@@ -180,7 +180,10 @@ def delete_regex_filter(filter_id, is_warnlist=False):
 
 
 def check_warnlist_matches(traffic_data):
-    """Check traffic data against warn-list filters
+    """Check traffic data against warn-list filters, excluding accept-list matches
+    
+    Packets that match the warn-list will trigger email notifications, UNLESS they
+    also match any pattern in the accept-list. The accept-list takes precedence.
     
     Args:
         traffic_data: Dictionary with 'traffic_by_ip' key containing IP data
@@ -188,9 +191,12 @@ def check_warnlist_matches(traffic_data):
     Returns:
         List of match dictionaries with 'filter', 'matched_ips', and 'details' keys
     """
-    warnlist_filters = load_regex_warnlist()
+    warnlist_filters = load_warnlist_filters()
     if not warnlist_filters:
         return []
+    
+    # Load accept-list filters to exclude from warn-list matches
+    accept_list_filters = load_accept_list_filters()
     
     matches = []
     traffic_by_ip = traffic_data.get('traffic_by_ip', {})
@@ -249,24 +255,61 @@ def check_warnlist_matches(traffic_data):
                     match_reason.append(f'Process: {matched_procs[0]}')
                 
                 if matched:
-                    # Handle processes field - keep original format
-                    processes_field = ip_data.get('processes', {})
-                    if isinstance(processes_field, list):
-                        processes_output = processes_field
-                    else:
-                        processes_output = dict(processes_field)
+                    # Check if this IP also matches any accept-list filter
+                    # If it does, skip it (accept-list takes precedence)
+                    is_accepted = False
+                    for accept_filter in accept_list_filters:
+                        accept_pattern = accept_filter.get('pattern')
+                        if not accept_pattern:
+                            continue
+                        try:
+                            accept_regex = re.compile(accept_pattern)
+                            # Check all fields that could match
+                            if accept_regex.search(ip):
+                                is_accepted = True
+                                break
+                            if any(accept_regex.search(str(d)) for d in ip_data.get('domains', [])):
+                                is_accepted = True
+                                break
+                            if ip_data.get('isp') and accept_regex.search(str(ip_data.get('isp'))):
+                                is_accepted = True
+                                break
+                            if any(accept_regex.search(str(p)) for p in ip_data.get('ports', [])):
+                                is_accepted = True
+                                break
+                            # Check processes
+                            processes_check = ip_data.get('processes', {})
+                            if isinstance(processes_check, list):
+                                if any(accept_regex.search(str(proc.get('name', ''))) for proc in processes_check):
+                                    is_accepted = True
+                                    break
+                            else:
+                                if any(accept_regex.search(str(proc)) for proc in processes_check.keys()):
+                                    is_accepted = True
+                                    break
+                        except re.error:
+                            continue
                     
-                    matched_details[ip] = {
-                        'ip': ip,
-                        'domains': list(ip_data.get('domains', [])),
-                        'isp': ip_data.get('isp'),
-                        'ports': list(ip_data.get('ports', [])),
-                        'processes': processes_output,
-                        'bytes': ip_data.get('bytes', 0),
-                        'packets': ip_data.get('packets', 0),
-                        'ip_type': ip_data.get('ip_type'),
-                        'match_reason': ', '.join(match_reason)
-                    }
+                    # Only add to matched_details if NOT in accept-list
+                    if not is_accepted:
+                        # Handle processes field - keep original format
+                        processes_field = ip_data.get('processes', {})
+                        if isinstance(processes_field, list):
+                            processes_output = processes_field
+                        else:
+                            processes_output = dict(processes_field)
+                        
+                        matched_details[ip] = {
+                            'ip': ip,
+                            'domains': list(ip_data.get('domains', [])),
+                            'isp': ip_data.get('isp'),
+                            'ports': list(ip_data.get('ports', [])),
+                            'processes': processes_output,
+                            'bytes': ip_data.get('bytes', 0),
+                            'packets': ip_data.get('packets', 0),
+                            'ip_type': ip_data.get('ip_type'),
+                            'match_reason': ', '.join(match_reason)
+                        }
             
             if matched_details:
                 matches.append({
@@ -316,7 +359,8 @@ def send_warnlist_email(matches, log_file_path, hostname=None):
         f'Warn-list traffic has been detected on {hostname}.',
         f'Traffic log file: {log_file_path}',
         '',
-        'IMPORTANT: This traffic has been marked as needing attention and was NOT automatically rejected.',
+        'IMPORTANT: This traffic matched the warn-list and did NOT match any accept-list patterns.',
+        'Traffic that matches the accept-list is automatically excluded from email notifications.',
         '',
         '=' * 80,
         ''
@@ -491,37 +535,37 @@ def register_filter_routes(app, auth_check_func):
     """
     from flask import request, jsonify, g
     
-    @app.route('/api/regex-filters', methods=['GET'])
-    def api_get_regex_filters():
-        """Get all accepted regex filters"""
+    @app.route('/api/accept-list-filters', methods=['GET'])
+    def api_get_accept_list_filters():
+        """Get all accept-list filters"""
         auth_error = auth_check_func()
         if auth_error:
             return auth_error
         
         try:
-            filters = load_regex_filters()
-            return jsonify({'filters': filters, 'type': 'accepted'})
+            filters = load_accept_list_filters()
+            return jsonify({'filters': filters, 'type': 'accept-list'})
         except Exception as e:
-            logger.error(f'Error loading regex filters: {e}', exc_info=True)
+            logger.error(f'Error loading accept-list filters: {e}', exc_info=True)
             return jsonify({'error': str(e)}), 500
     
-    @app.route('/api/regex-filters/warnlist', methods=['GET'])
-    def api_get_regex_warnlist():
-        """Get all warn-list regex filters"""
+    @app.route('/api/warnlist-filters', methods=['GET'])
+    def api_get_warnlist_filters():
+        """Get all warn-list filters"""
         auth_error = auth_check_func()
         if auth_error:
             return auth_error
         
         try:
-            filters = load_regex_warnlist()
+            filters = load_warnlist_filters()
             return jsonify({'filters': filters, 'type': 'warnlist'})
         except Exception as e:
             logger.error(f'Error loading warn-list filters: {e}', exc_info=True)
             return jsonify({'error': str(e)}), 500
     
-    @app.route('/api/regex-filters', methods=['POST'])
-    def api_create_regex_filter():
-        """Create a new accepted regex filter"""
+    @app.route('/api/accept-list-filters', methods=['POST'])
+    def api_create_accept_list_filter():
+        """Create a new accept-list filter"""
         auth_error = auth_check_func()
         if auth_error:
             return auth_error
@@ -544,17 +588,17 @@ def register_filter_routes(app, auth_check_func):
                 'updated_at': datetime.now(timezone.utc).isoformat()
             }
             
-            filter_id = save_regex_filter(filter_data, is_warnlist=False)
+            filter_id = save_filter(filter_data, is_warnlist=False)
             filter_data['id'] = filter_id
             
             return jsonify({'filter': filter_data}), 201
         except Exception as e:
-            logger.error(f'Error creating regex filter: {e}', exc_info=True)
+            logger.error(f'Error creating accept-list filter: {e}', exc_info=True)
             return jsonify({'error': str(e)}), 500
     
-    @app.route('/api/regex-filters/warnlist', methods=['POST'])
-    def api_create_regex_warnlist():
-        """Create a new warn-list regex filter"""
+    @app.route('/api/warnlist-filters', methods=['POST'])
+    def api_create_warnlist_filter():
+        """Create a new warn-list filter"""
         auth_error = auth_check_func()
         if auth_error:
             return auth_error
@@ -577,7 +621,7 @@ def register_filter_routes(app, auth_check_func):
                 'updated_at': datetime.now(timezone.utc).isoformat()
             }
             
-            filter_id = save_regex_filter(filter_data, is_warnlist=True)
+            filter_id = save_filter(filter_data, is_warnlist=True)
             filter_data['id'] = filter_id
             
             return jsonify({'filter': filter_data}), 201
@@ -585,9 +629,9 @@ def register_filter_routes(app, auth_check_func):
             logger.error(f'Error creating warn-list filter: {e}', exc_info=True)
             return jsonify({'error': str(e)}), 500
     
-    @app.route('/api/regex-filters/<filter_id>', methods=['PUT'])
-    def api_update_regex_filter(filter_id):
-        """Update an existing accepted regex filter"""
+    @app.route('/api/accept-list-filters/<filter_id>', methods=['PUT'])
+    def api_update_accept_list_filter(filter_id):
+        """Update an existing accept-list filter"""
         auth_error = auth_check_func()
         if auth_error:
             return auth_error
@@ -609,18 +653,18 @@ def register_filter_routes(app, auth_check_func):
                 'updated_at': datetime.now(timezone.utc).isoformat()
             }
             
-            updated_filter = update_regex_filter(filter_id, update_data, is_warnlist=False)
+            updated_filter = update_filter(filter_id, update_data, is_warnlist=False)
             if not updated_filter:
                 return jsonify({'error': 'Filter not found'}), 404
             
             return jsonify({'filter': updated_filter})
         except Exception as e:
-            logger.error(f'Error updating regex filter: {e}', exc_info=True)
+            logger.error(f'Error updating accept-list filter: {e}', exc_info=True)
             return jsonify({'error': str(e)}), 500
     
-    @app.route('/api/regex-filters/warnlist/<filter_id>', methods=['PUT'])
-    def api_update_regex_warnlist(filter_id):
-        """Update an existing warn-list regex filter"""
+    @app.route('/api/warnlist-filters/<filter_id>', methods=['PUT'])
+    def api_update_warnlist_filter(filter_id):
+        """Update an existing warn-list filter"""
         auth_error = auth_check_func()
         if auth_error:
             return auth_error
@@ -642,7 +686,7 @@ def register_filter_routes(app, auth_check_func):
                 'updated_at': datetime.now(timezone.utc).isoformat()
             }
             
-            updated_filter = update_regex_filter(filter_id, update_data, is_warnlist=True)
+            updated_filter = update_filter(filter_id, update_data, is_warnlist=True)
             if not updated_filter:
                 return jsonify({'error': 'Filter not found'}), 404
             
@@ -651,32 +695,32 @@ def register_filter_routes(app, auth_check_func):
             logger.error(f'Error updating warn-list filter: {e}', exc_info=True)
             return jsonify({'error': str(e)}), 500
     
-    @app.route('/api/regex-filters/<filter_id>', methods=['DELETE'])
-    def api_delete_regex_filter(filter_id):
-        """Delete an accepted regex filter"""
+    @app.route('/api/accept-list-filters/<filter_id>', methods=['DELETE'])
+    def api_delete_accept_list_filter(filter_id):
+        """Delete an accept-list filter"""
         auth_error = auth_check_func()
         if auth_error:
             return auth_error
         
         try:
-            success = delete_regex_filter(filter_id, is_warnlist=False)
+            success = delete_filter(filter_id, is_warnlist=False)
             if not success:
                 return jsonify({'error': 'Filter not found'}), 404
             
             return jsonify({'success': True})
         except Exception as e:
-            logger.error(f'Error deleting regex filter: {e}', exc_info=True)
+            logger.error(f'Error deleting accept-list filter: {e}', exc_info=True)
             return jsonify({'error': str(e)}), 500
     
-    @app.route('/api/regex-filters/warnlist/<filter_id>', methods=['DELETE'])
-    def api_delete_regex_warnlist(filter_id):
-        """Delete a warn-list regex filter"""
+    @app.route('/api/warnlist-filters/<filter_id>', methods=['DELETE'])
+    def api_delete_warnlist_filter(filter_id):
+        """Delete a warn-list filter"""
         auth_error = auth_check_func()
         if auth_error:
             return auth_error
         
         try:
-            success = delete_regex_filter(filter_id, is_warnlist=True)
+            success = delete_filter(filter_id, is_warnlist=True)
             if not success:
                 return jsonify({'error': 'Filter not found'}), 404
             

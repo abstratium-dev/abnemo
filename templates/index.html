@@ -317,15 +317,6 @@ th.sortable.desc::after {
     align-items: center;
 }
 
-.filter-master-toggle {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 15px;
-    background: var(--color-bg-secondary);
-    border-radius: 8px;
-}
-
 .filter-list {
     margin-top: 15px;
 }
@@ -554,27 +545,25 @@ tr.filter-hidden {
     
     <div id="error-container"></div>
     
-    <!-- Regex Filter Management Section -->
+    <!-- Accept-List Filter Management Section -->
     <div class="filter-section">
         <div class="filter-header" onclick="toggleFilterSection()">
-            <h3>🔍 Traffic Filters (Hide Matching)</h3>
+            <h3>✅ Accept-List Filters (Hide Matching)</h3>
             <span class="filter-toggle-icon" id="filter-toggle-icon">▼</span>
         </div>
         <div class="filter-content" id="filter-content">
             <div class="filter-controls">
-                <div class="filter-master-toggle">
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="filter-master-toggle" onchange="toggleAllFilters()">
-                        <span class="toggle-slider"></span>
-                    </label>
-                    <span>Enable All Filters (Hide Matching Traffic)</span>
-                </div>
-                <button onclick="showAddFilterForm()">+ Add Filter</button>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="accept-list-enabled" onchange="toggleAcceptListEnabled()" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+                <span>Enable Accept-List (Hide Matching Traffic)</span>
+                <button onclick="showAddFilterForm()" style="margin-left: auto;">+ Add Filter</button>
             </div>
             
             <div id="add-filter-form" class="filter-form" style="display: none;">
-                <h4 style="margin-bottom: 10px; color: var(--color-text-primary);">Add New Filter (Hide Matching Traffic)</h4>
-                <input type="text" id="new-filter-pattern" placeholder="Regex pattern (e.g., ^192\.168\..* to hide local IPs)" />
+                <h4 style="margin-bottom: 10px; color: var(--color-text-primary);">Add New Accept-List Filter (Hide Matching Traffic)</h4>
+                <input type="text" id="new-filter-pattern" placeholder="Pattern (e.g., ^192\.168\..* to hide local IPs)" />
                 <textarea id="new-filter-description" placeholder="Description (e.g., 'Hide local network traffic')"></textarea>
                 <div class="filter-form-actions">
                     <button onclick="saveNewFilter()">Save</button>
@@ -603,7 +592,7 @@ tr.filter-hidden {
             
             <div id="add-warnlist-form" class="filter-form" style="display: none;">
                 <h4 style="margin-bottom: 10px; color: var(--color-text-primary);">Add New Warn-list Filter (Highlight Matching Traffic)</h4>
-                <input type="text" id="new-warnlist-pattern" placeholder="Regex pattern (e.g., malicious-domain\.com)" />
+                <input type="text" id="new-warnlist-pattern" placeholder="Pattern (e.g., malicious-domain\.com)" />
                 <textarea id="new-warnlist-description" placeholder="Description (e.g., 'Known malicious domain')"></textarea>
                 <div class="filter-form-actions">
                     <button onclick="saveNewWarnlist()">Save</button>
@@ -1054,27 +1043,22 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// ========== REGEX FILTER MANAGEMENT ==========
+// ========== ACCEPT-LIST FILTER MANAGEMENT ==========
 
-let regexFilters = [];
-let filterToggles = {}; // Track individual filter toggle states
+let acceptListFilters = [];
 let warnlistFilters = []; // Warn-list filters (highlight matching traffic)
 
-function getLocalStorageKey(pattern) {
-    // Create a safe key from the pattern
-    return 'filters_accepted_' + encodeURIComponent(pattern);
+function isAcceptListEnabled() {
+    const stored = localStorage.getItem('accept_list_enabled');
+    // Default to true (enabled) if not set
+    return stored === null || stored === 'true';
 }
 
-function loadToggleState(pattern) {
-    const key = getLocalStorageKey(pattern);
-    const stored = localStorage.getItem(key);
-    // Default to false (not hiding) if not set
-    return stored === 'true';
-}
-
-function saveToggleState(pattern, enabled) {
-    const key = getLocalStorageKey(pattern);
-    localStorage.setItem(key, enabled.toString());
+function toggleAcceptListEnabled() {
+    const checkbox = document.getElementById('accept-list-enabled');
+    const enabled = checkbox.checked;
+    localStorage.setItem('accept_list_enabled', enabled.toString());
+    applyFiltersToCurrentData();
 }
 
 function toggleFilterSection() {
@@ -1083,24 +1067,19 @@ function toggleFilterSection() {
     content.classList.toggle('expanded');
     icon.classList.toggle('expanded');
     
-    if (content.classList.contains('expanded') && regexFilters.length === 0) {
-        loadRegexFilters();
+    if (content.classList.contains('expanded') && acceptListFilters.length === 0) {
+        loadAcceptListFilters();
     }
 }
 
-async function loadRegexFilters() {
+async function loadAcceptListFilters() {
     try {
-        const response = await fetch('/api/regex-filters');
+        const response = await fetch('/api/accept-list-filters');
         if (!response.ok) {
             throw new Error('Failed to load filters');
         }
         const data = await response.json();
-        regexFilters = data.filters || [];
-        
-        // Load toggle states from localStorage
-        regexFilters.forEach(filter => {
-            filterToggles[filter.id] = loadToggleState(filter.pattern);
-        });
+        acceptListFilters = data.filters || [];
         
         renderFilterList();
         applyFiltersToCurrentData();
@@ -1112,14 +1091,13 @@ async function loadRegexFilters() {
 function renderFilterList() {
     const container = document.getElementById('filter-list');
     
-    if (regexFilters.length === 0) {
-        container.innerHTML = '<div class="no-data">No filters defined. Click "Add Filter" to create one.</div>';
+    if (acceptListFilters.length === 0) {
+        container.innerHTML = '<div class="no-data">No accept-list filters defined. Click "Add Filter" to create one.</div>';
         return;
     }
     
     let html = '';
-    regexFilters.forEach(filter => {
-        const isEnabled = filterToggles[filter.id] === true;
+    acceptListFilters.forEach(filter => {
         const createdDate = new Date(filter.created_at).toLocaleString();
         const updatedDate = filter.updated_at ? new Date(filter.updated_at).toLocaleString() : createdDate;
         
@@ -1129,10 +1107,6 @@ function renderFilterList() {
         html += `
             <div class="filter-item" id="filter-${filter.id}">
                 <div class="filter-item-header">
-                    <label class="toggle-switch">
-                        <input type="checkbox" ${isEnabled ? 'checked' : ''} onchange="toggleFilter('${filter.id}')">
-                        <span class="toggle-slider"></span>
-                    </label>
                     <div class="filter-item-pattern" id="pattern-display-${filter.id}">${escapeHtml(filter.pattern)}</div>
                     <div class="filter-item-actions">
                         <button onclick="viewFilterHits('${encodedPattern}', '${encodedDescription}')">📊 View Hits</button>
@@ -1142,7 +1116,7 @@ function renderFilterList() {
                 </div>
                 ${filter.description ? `<div class="filter-item-description" id="description-display-${filter.id}">${escapeHtml(filter.description)}</div>` : `<div class="filter-item-description" id="description-display-${filter.id}" style="display:none;"></div>`}
                 <div class="filter-item-edit-form" id="edit-form-${filter.id}">
-                    <input type="text" id="edit-pattern-${filter.id}" value="${escapeHtml(filter.pattern)}" placeholder="Regex pattern" />
+                    <input type="text" id="edit-pattern-${filter.id}" value="${escapeHtml(filter.pattern)}" placeholder="Pattern" />
                     <textarea id="edit-description-${filter.id}" placeholder="Description (optional)">${escapeHtml(filter.description || '')}</textarea>
                     <div class="filter-item-edit-actions">
                         <button onclick="saveFilterEdit('${filter.id}')">Save</button>
@@ -1195,7 +1169,7 @@ async function saveNewFilter() {
     }
     
     try {
-        const response = await fetch('/api/regex-filters', {
+        const response = await fetch('/api/accept-list-filters', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ pattern, description })
@@ -1207,11 +1181,7 @@ async function saveNewFilter() {
         }
         
         const data = await response.json();
-        regexFilters.push(data.filter);
-        filterToggles[data.filter.id] = true;
-        
-        // Save the active state to localStorage immediately
-        saveToggleState(data.filter.pattern, true);
+        acceptListFilters.push(data.filter);
         
         cancelAddFilter();
         renderFilterList();
@@ -1247,7 +1217,7 @@ function cancelFilterEdit(filterId) {
     
     if (patternDisplay) patternDisplay.classList.remove('editing');
     if (descriptionDisplay) {
-        const filter = regexFilters.find(f => f.id === filterId);
+        const filter = acceptListFilters.find(f => f.id === filterId);
         if (filter && filter.description) {
             descriptionDisplay.style.display = 'block';
         }
@@ -1255,7 +1225,7 @@ function cancelFilterEdit(filterId) {
     if (editForm) editForm.classList.remove('active');
     
     // Reset form values to original
-    const filter = regexFilters.find(f => f.id === filterId);
+    const filter = acceptListFilters.find(f => f.id === filterId);
     if (filter) {
         const patternInput = document.getElementById(`edit-pattern-${filterId}`);
         const descriptionInput = document.getElementById(`edit-description-${filterId}`);
@@ -1287,7 +1257,7 @@ async function saveFilterEdit(filterId) {
     }
     
     try {
-        const response = await fetch(`/api/regex-filters/${filterId}`, {
+        const response = await fetch(`/api/accept-list-filters/${filterId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ pattern, description })
@@ -1299,19 +1269,9 @@ async function saveFilterEdit(filterId) {
         }
         
         const data = await response.json();
-        const index = regexFilters.findIndex(f => f.id === filterId);
+        const index = acceptListFilters.findIndex(f => f.id === filterId);
         if (index !== -1) {
-            const oldPattern = regexFilters[index].pattern;
-            regexFilters[index] = data.filter;
-            
-            // If pattern changed, migrate localStorage toggle state
-            if (oldPattern !== pattern) {
-                const oldToggleState = loadToggleState(oldPattern);
-                saveToggleState(pattern, oldToggleState);
-                // Remove old key
-                localStorage.removeItem(getLocalStorageKey(oldPattern));
-                filterToggles[filterId] = oldToggleState;
-            }
+            acceptListFilters[index] = data.filter;
         }
         
         renderFilterList();
@@ -1328,7 +1288,7 @@ async function deleteFilter(filterId) {
     }
     
     try {
-        const response = await fetch(`/api/regex-filters/${filterId}`, {
+        const response = await fetch(`/api/accept-list-filters/${filterId}`, {
             method: 'DELETE'
         });
         
@@ -1337,8 +1297,7 @@ async function deleteFilter(filterId) {
             throw new Error(error.error || 'Failed to delete filter');
         }
         
-        regexFilters = regexFilters.filter(f => f.id !== filterId);
-        delete filterToggles[filterId];
+        acceptListFilters = acceptListFilters.filter(f => f.id !== filterId);
         
         renderFilterList();
         applyFiltersToCurrentData();
@@ -1348,51 +1307,26 @@ async function deleteFilter(filterId) {
     }
 }
 
-function toggleFilter(filterId) {
-    const checkbox = event.target;
-    const enabled = checkbox.checked;
-    filterToggles[filterId] = enabled;
-    
-    // Save to localStorage
-    const filter = regexFilters.find(f => f.id === filterId);
-    if (filter) {
-        saveToggleState(filter.pattern, enabled);
-    }
-    
-    applyFiltersToCurrentData();
-}
-
-function toggleAllFilters() {
-    const masterToggle = document.getElementById('filter-master-toggle');
-    const enabled = masterToggle.checked;
-    
-    regexFilters.forEach(filter => {
-        filterToggles[filter.id] = enabled;
-        saveToggleState(filter.pattern, enabled);
-    });
-    
-    renderFilterList();
-    applyFiltersToCurrentData();
-}
-
 function applyFiltersToCurrentData() {
     if (!currentData) return;
     
-    // Get enabled filters (those that are checked/active)
-    const enabledFilters = regexFilters.filter(f => filterToggles[f.id] === true);
-    
-    if (enabledFilters.length === 0) {
-        // No filters enabled, show all traffic
+    // Check if accept-list is enabled for this session
+    if (!isAcceptListEnabled() || acceptListFilters.length === 0) {
+        // Accept-list disabled or no filters, show all traffic
         document.querySelectorAll('tr.filter-hidden').forEach(row => {
             row.classList.remove('filter-hidden');
         });
-        showFilterStatus('', '');
+        if (!isAcceptListEnabled()) {
+            showFilterStatus('Accept-list disabled - showing all traffic', 'info');
+        } else {
+            showFilterStatus('', '');
+        }
         hideFilteredStats();
         return;
     }
     
     // Compile regex patterns
-    const patterns = enabledFilters.map(f => {
+    const patterns = acceptListFilters.map(f => {
         try {
             return new RegExp(f.pattern);
         } catch (e) {
@@ -1474,7 +1408,7 @@ function applyFiltersToCurrentData() {
     
     const visibleCount = totalCount - hiddenCount;
     showFilterStatus(
-        `Hiding ${hiddenCount} of ${totalCount} traffic entries (${enabledFilters.length} filter${enabledFilters.length > 1 ? 's' : ''} active)`,
+        `Hiding ${hiddenCount} of ${totalCount} traffic entries (${acceptListFilters.length} filter${acceptListFilters.length > 1 ? 's' : ''} active)`,
         hiddenCount > 0 ? 'info' : 'info'
     );
     
@@ -1576,7 +1510,7 @@ function toggleWarnlistSection() {
 
 async function loadWarnlistFilters() {
     try {
-        const response = await fetch('/api/regex-filters/warnlist');
+        const response = await fetch('/api/warnlist-filters');
         if (!response.ok) {
             throw new Error('Failed to load warn-list filters');
         }
@@ -1618,7 +1552,7 @@ function renderWarnlistList() {
                 </div>
                 ${filter.description ? `<div class="filter-item-description" id="warnlist-description-display-${filter.id}">${escapeHtml(filter.description)}</div>` : `<div class="filter-item-description" id="warnlist-description-display-${filter.id}" style="display:none;"></div>`}
                 <div class="filter-item-edit-form" id="warnlist-edit-form-${filter.id}">
-                    <input type="text" id="warnlist-edit-pattern-${filter.id}" value="${escapeHtml(filter.pattern)}" placeholder="Regex pattern" />
+                    <input type="text" id="warnlist-edit-pattern-${filter.id}" value="${escapeHtml(filter.pattern)}" placeholder="Pattern" />
                     <textarea id="warnlist-edit-description-${filter.id}" placeholder="Description (optional)">${escapeHtml(filter.description || '')}</textarea>
                     <div class="filter-item-edit-actions">
                         <button onclick="saveWarnlistEdit('${filter.id}')">Save</button>
@@ -1665,7 +1599,7 @@ async function saveNewWarnlist() {
     }
     
     try {
-        const response = await fetch('/api/regex-filters/warnlist', {
+        const response = await fetch('/api/warnlist-filters', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ pattern, description })
@@ -1749,7 +1683,7 @@ async function saveWarnlistEdit(filterId) {
     }
     
     try {
-        const response = await fetch(`/api/regex-filters/warnlist/${filterId}`, {
+        const response = await fetch(`/api/warnlist-filters/${filterId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ pattern, description })
@@ -1780,7 +1714,7 @@ async function deleteWarnlist(filterId) {
     }
     
     try {
-        const response = await fetch(`/api/regex-filters/warnlist/${filterId}`, {
+        const response = await fetch(`/api/warnlist-filters/${filterId}`, {
             method: 'DELETE'
         });
         
@@ -1885,9 +1819,15 @@ function showWarnlistStatus(message, type) {
 
 // Page-specific initialization
 window.addEventListener('DOMContentLoaded', async () => {
+    // Initialize accept-list enabled checkbox from localStorage
+    const acceptListCheckbox = document.getElementById('accept-list-enabled');
+    if (acceptListCheckbox) {
+        acceptListCheckbox.checked = isAcceptListEnabled();
+    }
+    
     // Load filters immediately on page load
     await Promise.all([
-        loadRegexFilters(),
+        loadAcceptListFilters(),
         loadWarnlistFilters()
     ]);
     
