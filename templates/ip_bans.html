@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+
+{% block title %}IP Ban Management - Abnemo{% endblock %}
+
+{% block brand_name %}ABNEMO - IP Ban Management{% endblock %}
+
+{% block extra_styles %}
+.controls {
+    background: var(--color-bg-primary);
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px var(--shadow-sm);
+}
+
+.ban-form {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 250px;
+}
+
+label {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--color-text-primary);
+    font-size: 0.9em;
+}
+
+input[type="text"] {
+    padding: 12px;
+    border: 2px solid var(--color-border-primary);
+    border-radius: 8px;
+    font-size: 1em;
+    transition: border-color 0.3s;
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+}
+
+input[type="text"]:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.stats {
+    background: var(--color-bg-primary);
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px var(--shadow-sm);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.stat-card {
+    background: var(--color-primary);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 2em;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 0.9em;
+    opacity: 0.9;
+}
+
+.banned-ips-table {
+    background: var(--color-bg-primary);
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 6px var(--shadow-sm);
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    background: var(--color-bg-tertiary);
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    border-bottom: 2px solid var(--color-border-primary);
+}
+
+td {
+    padding: 15px;
+    border-bottom: 1px solid var(--color-border-light);
+    color: var(--color-text-primary);
+}
+
+tr:hover {
+    background: var(--color-bg-hover);
+}
+
+.no-data {
+    text-align: center;
+    padding: 40px;
+    color: var(--color-text-tertiary);
+    font-size: 1.1em;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--color-text-secondary);
+}
+
+.action-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1.5em;
+    padding: 5px 10px;
+    transition: transform 0.2s;
+}
+
+.action-btn:hover {
+    transform: scale(1.2);
+}
+
+.action-btn:active {
+    transform: scale(0.9);
+}
+
+.ip-code {
+    font-family: 'Courier New', monospace;
+    background: var(--color-bg-secondary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.info-box {
+    background: var(--color-bg-secondary);
+    border-left: 4px solid var(--color-primary);
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+}
+
+.info-box p {
+    margin: 5px 0;
+    color: var(--color-text-secondary);
+    font-size: 0.95em;
+}
+
+.spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.btn-loading {
+    opacity: 0.7;
+    cursor: wait;
+    pointer-events: none;
+}
+
+@media (max-width: 768px) {
+    .ban-form {
+        flex-direction: column;
+    }
+    
+    .input-group {
+        width: 100%;
+    }
+}
+{% endblock %}
+
+{% block content %}
+<div id="app-content">
+    <div class="info-box">
+        <p><strong>ℹ️ About IP Ban Management</strong></p>
+        <p>This page allows you to manage IP address bans using UFW (Uncomplicated Firewall) and fail2ban.</p>
+        <p>• <strong>Ban:</strong> Adds a UFW deny rule to block all traffic from the specified IP</p>
+        <p>• <strong>Unban:</strong> Removes the IP from both fail2ban (if installed) and UFW</p>
+    </div>
+
+    <div class="controls">
+        <h2 style="margin-bottom: 20px; color: var(--color-text-primary);">🚫 Ban IP Address</h2>
+        <form class="ban-form" onsubmit="banIP(event)">
+            <div class="input-group">
+                <label for="ip-input">IP Address</label>
+                <input type="text" id="ip-input" placeholder="e.g., 192.168.1.100" required pattern="^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$">
+            </div>
+            <button type="submit">Ban IP</button>
+        </form>
+    </div>
+    
+    <div class="stats" id="stats-container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="stat-banned">0</div>
+                <div class="stat-label">Banned IPs</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="banned-ips-table">
+        <h2 style="margin-bottom: 20px; color: var(--color-text-primary);">📋 Banned IP Addresses</h2>
+        <div id="table-container">
+            <div class="loading">Loading banned IPs...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+// Notification functions are now in base.html (showError, showSuccess, showInfo, clearNotifications)
+
+function setButtonLoading(button, loading) {
+    if (loading) {
+        button.classList.add('btn-loading');
+        const originalText = button.textContent;
+        button.dataset.originalText = originalText;
+        button.innerHTML = originalText + '<span class="spinner"></span>';
+    } else {
+        button.classList.remove('btn-loading');
+        if (button.dataset.originalText) {
+            button.textContent = button.dataset.originalText;
+            delete button.dataset.originalText;
+        }
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+async function loadBannedIPs() {
+    if (authState.oauth_enabled) {
+        if (!authState.authenticated) {
+            showError('Please sign in to view banned IPs.');
+            return;
+        }
+        if (!authState.has_access) {
+            const roleMsg = authState.required_group ? ` You must belong to the "${authState.required_group}" group to view this data.` : '';
+            showError(`Your account is not authorized to view this data.${roleMsg}`);
+            return;
+        }
+    }
+    
+    document.getElementById('table-container').innerHTML = '<div class="loading">Loading banned IPs...</div>';
+    
+    try {
+        const response = await fetch('/api/ip-bans');
+        
+        if (!response.ok) {
+            const error = await response.json();
+            showError(error.error || 'Failed to load banned IPs');
+            document.getElementById('table-container').innerHTML = '<div class="no-data">Failed to load data</div>';
+            return;
+        }
+        
+        const data = await response.json();
+        displayBannedIPs(data.banned_ips);
+        
+        // Update stats
+        document.getElementById('stat-banned').textContent = data.count;
+    } catch (error) {
+        showError('Error loading banned IPs: ' + error.message);
+        document.getElementById('table-container').innerHTML = '<div class="no-data">Error loading data</div>';
+    }
+}
+
+function displayBannedIPs(bannedIPs) {
+    if (bannedIPs.length === 0) {
+        document.getElementById('table-container').innerHTML = '<div class="no-data">No banned IP addresses found</div>';
+        return;
+    }
+    
+    let tableHTML = `
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>IP Address</th>
+                    <th>Rule Details</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    bannedIPs.forEach((item, index) => {
+        const ruleNum = item.rule_number ? `#${item.rule_number}` : 'N/A';
+        const ruleDetails = item.rule || 'N/A';
+        
+        tableHTML += `
+            <tr>
+                <td>${index + 1}</td>
+                <td><code class="ip-code">${escapeHtml(item.ip)}</code></td>
+                <td>${escapeHtml(ruleDetails)}</td>
+                <td>
+                    <button class="action-btn" onclick="unbanIP('${escapeHtml(item.ip)}', this)" title="Unban this IP address">
+                        🗑️
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tableHTML += `
+            </tbody>
+        </table>
+    `;
+    
+    document.getElementById('table-container').innerHTML = tableHTML;
+}
+
+async function banIP(event) {
+    event.preventDefault();
+    
+    if (authState.oauth_enabled) {
+        if (!authState.authenticated) {
+            showError('Please sign in to ban IP addresses.');
+            return;
+        }
+        if (!authState.has_access) {
+            const roleMsg = authState.required_group ? ` You must belong to the "${authState.required_group}" group.` : '';
+            showError(`Your account is not authorized to perform this action.${roleMsg}`);
+            return;
+        }
+    }
+    
+    const ipInput = document.getElementById('ip-input');
+    const ipAddress = ipInput.value.trim();
+    
+    if (!ipAddress) {
+        showError('Please enter an IP address');
+        return;
+    }
+    
+    // Validate IP format
+    const ipPattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+    if (!ipPattern.test(ipAddress)) {
+        showError('Invalid IP address format. Please use format: xxx.xxx.xxx.xxx');
+        return;
+    }
+    
+    clearNotifications();
+    
+    // Get submit button and show loading state
+    const submitButton = event.target.querySelector('button[type="submit"]');
+    setButtonLoading(submitButton, true);
+    
+    try {
+        const response = await fetch('/api/ip-bans', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ip: ipAddress })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            showSuccess(data.message || `Successfully banned IP ${ipAddress}`);
+            ipInput.value = '';
+            // Reload the list
+            setTimeout(() => loadBannedIPs(), 500);
+        } else {
+            showError(data.error || 'Failed to ban IP address');
+        }
+    } catch (error) {
+        showError('Error banning IP: ' + error.message);
+    } finally {
+        setButtonLoading(submitButton, false);
+    }
+}
+
+async function unbanIP(ipAddress, buttonElement) {
+    if (authState.oauth_enabled) {
+        if (!authState.authenticated) {
+            showError('Please sign in to unban IP addresses.');
+            return;
+        }
+        if (!authState.has_access) {
+            const roleMsg = authState.required_group ? ` You must belong to the "${authState.required_group}" group.` : '';
+            showError(`Your account is not authorized to perform this action.${roleMsg}`);
+            return;
+        }
+    }
+    
+    if (!confirm(`Are you sure you want to unban IP ${ipAddress}?`)) {
+        return;
+    }
+    
+    clearNotifications();
+    
+    // Show loading state on the button if provided
+    if (buttonElement) {
+        setButtonLoading(buttonElement, true);
+    }
+    
+    try {
+        const response = await fetch(`/api/ip-bans/${encodeURIComponent(ipAddress)}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            showSuccess(data.message || `Successfully unbanned IP ${ipAddress}`);
+            // Reload the list
+            setTimeout(() => loadBannedIPs(), 500);
+        } else {
+            showError(data.error || 'Failed to unban IP address');
+        }
+    } catch (error) {
+        showError('Error unbanning IP: ' + error.message);
+    } finally {
+        if (buttonElement) {
+            setButtonLoading(buttonElement, false);
+        }
+    }
+}
+
+// Initialize on page load
+window.addEventListener('DOMContentLoaded', async () => {
+    await fetchAuthStatus();
+    loadBannedIPs();
+});
+{% endblock %}

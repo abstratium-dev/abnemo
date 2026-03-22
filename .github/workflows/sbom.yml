@@ -1,0 +1,42 @@
+name: Continuous Compliance (SBOM & Scan)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  compliance-and-sbom:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to push the SBOM back to the repo
+      security-events: write # Needed for vulnerability reporting
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          format: 'cyclonedx-json'
+          output-file: 'sbom.json'
+
+      # VULNERABILITY SCAN: Essential for CRA/nFADP compliance
+      - name: Scan SBOM for Vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'sbom'
+          scan-ref: 'sbom.json'
+          format: 'table'
+          exit-code: '1' # This will fail the build if "Critical" bugs are found
+          severity: 'CRITICAL,HIGH'
+
+      # PUSH TO REPO: Makes it available for anyone who clones
+      - name: Commit SBOM to Repository
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add sbom.json
+          git commit -m "docs: update auto-generated SBOM [skip ci]" || echo "No changes to commit"
+          git push

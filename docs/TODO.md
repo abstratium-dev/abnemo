@@ -17,15 +17,7 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
 - install as service so it's restarted if it crashes
   - read SYSTEMD_SERVICE.md
 
-- ips
-  - whitelist with regex
-  - ban an ip address permanently
-  - unban an ip address
-  - list banned ip addresses
-
 - alerting if there are sudden spikes in traffic
-
-- graph showing traffic over time, based on logs, so interval isn't very large which is ok for this tool
 
 - use mermaid for diagrams in docs
 

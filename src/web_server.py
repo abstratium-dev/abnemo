@@ -20,6 +20,7 @@ from src.oauth import (
 from src.filters import register_filter_routes
 from src.iptables_endpoints import register_iptables_routes
 from src.fail2ban_endpoints import register_fail2ban_routes
+from src.ip_bans import register_ip_ban_routes
 
 
 def parse_log_timestamp(timestamp_str):
@@ -535,6 +536,11 @@ def create_app(log_dir):
         """Serve traffic visualization page using template"""
         return render_template('traffic_viz.html')
     
+    @app.route('/ip-bans')
+    def ip_bans_page():
+        """Serve IP ban management page using template"""
+        return render_template('ip_bans.html')
+    
     @app.route('/<path:path>')
     def static_files(path):
         """Serve static files"""
@@ -586,6 +592,7 @@ def create_app(log_dir):
     register_iptables_routes(app, _ensure_authenticated_response)
     register_fail2ban_routes(app, _ensure_authenticated_response)
     register_filter_routes(app, _ensure_authenticated_response)
+    register_ip_ban_routes(app, _ensure_authenticated_response)
 
     return app
 

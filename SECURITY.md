@@ -130,7 +130,7 @@ For general questions, please use the regular issue tracker.
 
 **Thank you for helping us build a more secure application!** 🙏
 
-### References
+## References
 
 This security policy follows industry best practices:
 
@@ -138,6 +138,15 @@ This security policy follows industry best practices:
 - [OWASP Vulnerability Disclosure Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Vulnerability_Disclosure_Cheat_Sheet.html)
 - [ISO/IEC 29147:2018 - Vulnerability Disclosure](https://www.iso.org/standard/72311.html)
 
+## Software Bill of Materials (SBOM)
+To comply with modern transparency standards (including the EU Cyber Resilience Act), we provide a machine-readable **SBOM** in CycloneDX JSON format. 
+
+* **Location:** You can find the latest version in the root of this repository as `sbom.json`.
+* **Verification:** This file is automatically updated and scanned for vulnerabilities on every push to the `main` branch.
+
+---
+*Compliance Note: This project aims to meet the security-by-design requirements of the Swiss nFADP and the EU CRA.*
+
 ---
 
-**Last Updated**: December 2025
+**Last Updated**: March 2026

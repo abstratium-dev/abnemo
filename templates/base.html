@@ -178,7 +178,9 @@
                     <span>&nbsp;|&nbsp;</span>
                     <a href="/fail2ban" id="fail2ban-link">🛡️ fail2ban</a>
                     <span>&nbsp;|&nbsp;</span>
-                    <a href="/traffic-viz" id="traffic-viz-link"> 📊 traffic</a>
+                    <a href="/traffic-viz" id="traffic-viz-link">📊 traffic</a>
+                    <span>&nbsp;|&nbsp;</span>
+                    <a href="/ip-bans" id="ip-bans-link">🚫 ip bans</a>
                     <span id="auth-separator" style="display: none;">&nbsp;|&nbsp;</span>
                     <a href="#" id="auth-link" style="display: none;" onclick="handleAuthClick(event)"></a>
                 </div>
@@ -233,7 +235,8 @@
                 '/': 'network-link',
                 '/iptables': 'iptables-link',
                 '/traffic-viz': 'traffic-viz-link',
-                '/fail2ban': 'fail2ban-link'
+                '/fail2ban': 'fail2ban-link',
+                '/ip-bans': 'ip-bans-link'
             };
             
             // Remove inactive-link from all
@@ -301,18 +304,143 @@
             }
         }
 
-        function showError(message) {
-            const errorContainer = document.getElementById('error-container');
-            if (errorContainer) {
-                errorContainer.innerHTML = `<div class="error">${message}</div>`;
+        // ===== UNIFIED NOTIFICATION SYSTEM =====
+        let notificationTimeout = null;
+        
+        function showNotification(message, type = 'error', duration = 5000) {
+            // Clear any existing timeout
+            if (notificationTimeout) {
+                clearTimeout(notificationTimeout);
+                notificationTimeout = null;
+            }
+            
+            // Get or create notification container
+            let container = document.getElementById('notification-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'notification-container';
+                container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; max-width: 400px;';
+                document.body.appendChild(container);
+            }
+            
+            // Determine colors based on type
+            let bgColor, textColor, borderColor, icon;
+            if (type === 'success') {
+                bgColor = 'var(--color-success-bg)';
+                textColor = 'var(--color-success-text)';
+                borderColor = 'var(--color-success)';
+                icon = '✓';
+            } else if (type === 'info') {
+                bgColor = 'var(--color-info-bg)';
+                textColor = 'var(--color-info-text)';
+                borderColor = 'var(--color-info)';
+                icon = 'ℹ';
+            } else {
+                bgColor = 'var(--color-danger-bg)';
+                textColor = 'var(--color-danger-text)';
+                borderColor = 'var(--color-danger)';
+                icon = '⚠';
+            }
+            
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                background: ${bgColor};
+                color: ${textColor};
+                padding: 15px 45px 15px 15px;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                border-left: 4px solid ${borderColor};
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                position: relative;
+                animation: slideIn 0.3s ease-out;
+                word-wrap: break-word;
+            `;
+            
+            // Escape HTML in message
+            const div = document.createElement('div');
+            div.textContent = message;
+            const escapedMessage = div.innerHTML;
+            
+            notification.innerHTML = `
+                <span style="font-weight: bold; margin-right: 8px;">${icon}</span>
+                <span>${escapedMessage}</span>
+                <button onclick="this.parentElement.remove()" style="
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    background: transparent;
+                    border: none;
+                    color: ${textColor};
+                    font-size: 20px;
+                    cursor: pointer;
+                    padding: 0;
+                    width: 25px;
+                    height: 25px;
+                    line-height: 25px;
+                    text-align: center;
+                    opacity: 0.7;
+                    transition: opacity 0.2s;
+                " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">×</button>
+            `;
+            
+            // Add animation keyframes if not already added
+            if (!document.getElementById('notification-styles')) {
+                const style = document.createElement('style');
+                style.id = 'notification-styles';
+                style.textContent = `
+                    @keyframes slideIn {
+                        from {
+                            transform: translateX(400px);
+                            opacity: 0;
+                        }
+                        to {
+                            transform: translateX(0);
+                            opacity: 1;
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            // Clear previous notifications and add new one
+            container.innerHTML = '';
+            container.appendChild(notification);
+            
+            // Auto-hide after duration (show immediately, hide after duration)
+            if (duration > 0) {
+                notificationTimeout = setTimeout(() => {
+                    // Fade out animation
+                    notification.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+                    notification.style.opacity = '0';
+                    notification.style.transform = 'translateX(400px)';
+                    // Remove from DOM after animation completes
+                    setTimeout(() => notification.remove(), 300);
+                }, duration);
             }
         }
         
+        function showError(message, duration = 5000) {
+            showNotification(message, 'error', duration);
+        }
+        
+        function showSuccess(message, duration = 5000) {
+            showNotification(message, 'success', duration);
+        }
+        
+        function showInfo(message, duration = 5000) {
+            showNotification(message, 'info', duration);
+        }
+        
         function clearError() {
-            const errorContainer = document.getElementById('error-container');
-            if (errorContainer) {
-                errorContainer.innerHTML = '';
+            const container = document.getElementById('notification-container');
+            if (container) {
+                container.innerHTML = '';
             }
+        }
+        
+        function clearNotifications() {
+            clearError();
         }
 
         async function fetchAuthStatus() {

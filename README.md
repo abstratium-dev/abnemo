@@ -1117,6 +1117,21 @@ sudo python3 src/abnemo.py monitor &
 python3 src/abnemo.py generate --log traffic_logs/traffic_log_*.json --interactive
 ```
 
+## SBOM & Compliance
+
+This project maintains a **Software Bill of Materials (SBOM)** in compliance with:
+- **EU Cyber Resilience Act (CRA)** - Effective 2026
+- **Swiss Federal Act on Data Protection (nFADP)** - Art. 7 (Privacy by Design)
+
+The SBOM is automatically generated and updated on every push to `main` using GitHub Actions. It includes:
+- Complete dependency inventory with versions
+- Vulnerability scanning (CRITICAL and HIGH severity)
+- CycloneDX format (recognized by EU and Swiss authorities)
+
+**Accessing the SBOM:**
+- Download `sbom.json` from the repository root
+- View the latest scan results in GitHub Actions
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
