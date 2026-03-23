@@ -32,7 +32,7 @@ This document describes how to set up a development environment, run tests, and 
 sudo apt update
 sudo apt install python3 python3-pip python3-dev
 
-# For eBPF support (optional)
+# For eBPF support
 sudo apt install python3-bpfcc linux-headers-$(uname -r)
 ```
 
@@ -40,11 +40,8 @@ sudo apt install python3-bpfcc linux-headers-$(uname -r)
 
 **Production dependencies:**
 ```bash
-# Option A: System packages (recommended)
+# System packages
 sudo apt install python3-scapy python3-dnspython python3-tabulate python3-flask
-
-# Option B: pip (for development)
-pip install -r requirements.txt
 ```
 
 **Development dependencies:**
@@ -184,74 +181,6 @@ python3 -m pytest --cov=web_server --cov-report=term-missing tests/test_web_serv
 **web_server.py**: ~55% coverage (17/17 tests passing)
 - Covered: `parse_log_timestamp()`, `get_logs_in_range()`
 - Not covered: Flask routes (requires integration tests)
-
----
-
-## Testing Philosophy
-
-### Test-Driven Development
-
-1. **Write tests first** - Define expected behavior before implementation
-2. **Red-Green-Refactor** - Fail → Pass → Improve
-3. **Test one thing** - Each test should verify a single behavior
-4. **Descriptive names** - Test names should describe what they test
-
-### Test Types
-
-#### Unit Tests
-- Test individual functions in isolation
-- Mock external dependencies
-- Fast execution (<1s per test)
-- Example: `test_parse_log_timestamp()`
-
-#### Integration Tests
-- Test multiple components together
-- Use real dependencies when possible
-- Slower execution (1-10s per test)
-- Example: Testing web API with real Flask app
-
-#### End-to-End Tests
-- Test complete workflows
-- Require root privileges and real network
-- Slowest execution (10s+ per test)
-- Example: Capture packets → Save logs → Generate rules
-
-### Mocking Strategy
-
-**Mock external dependencies:**
-- Network requests (use `responses` library)
-- File system (use `tempfile` for test directories)
-- Time (use `freezegun` for datetime mocking)
-- System calls (use `pytest-mock`)
-
-**Don't mock:**
-- Internal functions (test real behavior)
-- Simple data structures
-- Pure functions
-
-### Test Data
-
-**Use fixtures for:**
-- Sample log files
-- Mock traffic data
-- Test configurations
-
-**Example fixture:**
-```python
-@pytest.fixture
-def sample_traffic_log():
-    return {
-        "timestamp": "2026-03-02T20:30:00Z",
-        "traffic_by_ip": {
-            "1.2.3.4": {
-                "bytes": 1000,
-                "packets": 10,
-                "domains": ["example.com"],
-                "ports": [443]
-            }
-        }
-    }
-```
 
 ---
 

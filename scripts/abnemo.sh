@@ -7,12 +7,8 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Get the project root (parent of scripts directory)
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 
-# Find the Python executable (prefer virtual environment if active)
-if [ -n "$VIRTUAL_ENV" ]; then
-    PYTHON="$VIRTUAL_ENV/bin/python3"
-else
-    PYTHON=$(which python3)
-fi
+# Find the Python executable
+PYTHON=$(which python3)
 
 # Optional environment file that exports ABSTRAUTH_* vars
 ENV_FILE="/w/abstratium-abnemo.env"

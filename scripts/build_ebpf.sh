@@ -149,6 +149,7 @@ EBPF_FILE="ebpf/network_monitor.c"
 
 if [ ! -f "$EBPF_FILE" ]; then
     echo -e "${RED}ERROR: eBPF program not found: $EBPF_FILE${NC}"
+    echo "Expected location: $PROJECT_ROOT/$EBPF_FILE"
     exit 1
 fi
 
@@ -174,10 +175,16 @@ echo "----------------------------------------"
 echo "Compiling network_monitor.c (accurate byte counting)..."
 python3 << 'EOF'
 import sys
+import os
 try:
     from bcc import BPF
     
-    with open('ebpf/network_monitor.c', 'r') as f:
+    ebpf_file = 'ebpf/network_monitor.c'
+    if not os.path.exists(ebpf_file):
+        print(f"✗ File not found: {ebpf_file}")
+        sys.exit(1)
+    
+    with open(ebpf_file, 'r') as f:
         bpf_text = f.read()
     
     bpf = BPF(text=bpf_text)
@@ -185,6 +192,9 @@ try:
     bpf.cleanup()
     sys.exit(0)
     
+except FileNotFoundError as e:
+    print(f"✗ File not found: {e}")
+    sys.exit(1)
 except Exception as e:
     print(f"✗ Compilation failed: {e}")
     sys.exit(1)

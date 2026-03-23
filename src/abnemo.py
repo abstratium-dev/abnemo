@@ -97,9 +97,6 @@ def monitor_command(args):
     # Save statistics
     log_file = monitor.save_statistics()
     
-    logger.info(f"\nTo generate iptables rules from this log, run:")
-    logger.info(f"    python3 src/abnemo.py generate --log {log_file} --interactive")
-
 
 def list_logs_command(args):
     """Handle the list-logs subcommand"""
@@ -212,15 +209,6 @@ Examples:
 
   # Monitor specific interface
   sudo python3 src/abnemo.py monitor --interface eth0
-
-  # Generate rules interactively from a log
-  python3 src/abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --interactive
-
-  # Generate rules for IPs with >10MB traffic
-  python3 src/abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --min-bytes 10485760
-
-  # Block specific domains
-  python3 src/abnemo.py generate --log traffic_logs/traffic_log_20240301_120000.json --domains "example.com,ads.com"
 
   # List all captured logs
   python3 src/abnemo.py list-logs

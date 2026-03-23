@@ -47,7 +47,7 @@ Create `/etc/systemd/system/abnemo.service`:
 [Unit]
 Description=Abnemo Network Traffic Monitor
 After=network.target
-Documentation=https://github.com/yourusername/abnemo
+Documentation=https://github.com/abstratium-dev/abnemo
 
 [Service]
 Type=simple
