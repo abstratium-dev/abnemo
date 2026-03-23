@@ -12,7 +12,10 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
 
 - test install.sh script
 
+- add notes on how to release
 
+- create an upgrade.sh script
+- create an uninstall.sh script
 
 
 ## Tomorrow
