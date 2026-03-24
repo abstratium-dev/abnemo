@@ -9,6 +9,7 @@ Abnemo implements a secure authentication flow where:
 - **JWT tokens never reach the browser** - they're stored server-side only
 - The browser receives only an **HTTP-only session cookie**
 - PKCE (Proof Key for Code Exchange) is used for additional security
+- **Session IDs are regenerated after authentication** to prevent session fixation attacks
 
 This BFF pattern ensures that sensitive tokens, client secrets, and PKCE parameters remain on the server, protecting them from XSS attacks and browser-based vulnerabilities.
 
@@ -55,10 +56,15 @@ sequenceDiagram
     Abstrauth->>Abstrauth: Validate client credentials
     Abstrauth-->>Abnemo: {<br/>  access_token: "eyJhbG...",<br/>  id_token: "eyJhbG...",<br/>  refresh_token: "...",<br/>  expires_in: 3600<br/>}
     
-    Note over Browser,Abstrauth: 5. Token Storage & Session Update
+    Note over Browser,Abstrauth: 5. Token Storage & Session Regeneration
     Abnemo->>Abnemo: Parse JWT claims from id_token:<br/>- sub (user ID)<br/>- email<br/>- name<br/>- groups[]
-    Abnemo->>SessionStore: Update session:<br/>{<br/>  authenticated: true,<br/>  tokens: {access_token, refresh_token, expires_at},<br/>  user: {sub, email, name, groups}<br/>}
-    Abnemo-->>Browser: 302 Redirect to /
+    Abnemo->>SessionStore: Regenerate session ID<br/>(prevents session fixation)
+    SessionStore->>SessionStore: Create new session ID
+    SessionStore->>SessionStore: Copy data to new session
+    SessionStore->>SessionStore: Delete old session ID
+    SessionStore-->>Abnemo: new_session_id
+    Abnemo->>SessionStore: Update new session:<br/>{<br/>  authenticated: true,<br/>  tokens: {access_token, refresh_token, expires_at},<br/>  user: {sub, email, name, groups}<br/>}
+    Abnemo-->>Browser: Set-Cookie: abnemo_session=<new_session_id><br/>302 Redirect to /
     Browser->>Abnemo: GET /
     Abnemo->>SessionStore: Get session by cookie
     SessionStore-->>Abnemo: {authenticated: true, user: {...}}
@@ -241,8 +247,10 @@ Set-Cookie: abnemo_session=<random_32_byte_token>;
 | **Persistence** | Non-persistent (lost on server restart) |
 | **Thread Safety** | Yes (threading.Lock) |
 | **Session ID** | 32-byte random token (URL-safe base64) |
+| **Session Regeneration** | Yes (after authentication to prevent fixation) |
 | **Default TTL** | 3600 seconds (1 hour) |
 | **Auto-Expiry** | Yes (checked on every access) |
+| **Token Expiry Validation** | Yes (sessions invalidated when JWT expires) |
 | **Token Refresh** | Stored but not auto-refreshed |
 
 ### Security Benefits
@@ -250,8 +258,10 @@ Set-Cookie: abnemo_session=<random_32_byte_token>;
 1. **No XSS exposure** - Tokens never reach JavaScript
 2. **No CSRF exposure** - Session cookie has SameSite=Lax
 3. **No token leakage** - Tokens can't be stolen from browser storage
-4. **Automatic cleanup** - Expired sessions auto-deleted
-5. **Thread-safe** - Concurrent requests handled safely
+4. **No session fixation** - Session ID regenerated after authentication
+5. **Token expiry enforcement** - Sessions cannot outlive JWT token expiry
+6. **Automatic cleanup** - Expired sessions auto-deleted
+7. **Thread-safe** - Concurrent requests handled safely
 
 ### Limitations
 
@@ -541,26 +551,119 @@ def api_logout():
     # ... proceed with logout
 ```
 
-### 5. Session Expiry
+### 5. Session Regeneration (Anti-Fixation)
 
-Sessions automatically expire after TTL:
+Session IDs are regenerated after successful authentication to prevent session fixation attacks:
 
 ```python
-def _is_expired(self, session):
-    expires_at = session.get('_session_expires_at')
-    return bool(expires_at and expires_at < datetime.now(timezone.utc))
+def regenerate_session(self, old_session_id):
+    """Regenerate session ID to prevent session fixation attacks.
+    
+    This creates a new session ID and transfers all session data
+    from the old session to the new one, then deletes the old session.
+    This is critical for preventing session fixation attacks where an
+    attacker tricks a victim into using a known session ID.
+    """
+    with self._lock:
+        old_session = self._sessions.get(old_session_id)
+        if not old_session:
+            return None, None
+        
+        # Generate new session ID
+        new_session_id = secrets.token_urlsafe(32)
+        
+        # Copy all data to new session
+        new_session = old_session.copy()
+        new_session['_session_expires_at'] = self._now() + timedelta(seconds=self.ttl_seconds)
+        
+        # Store new session and delete old one
+        self._sessions[new_session_id] = new_session
+        del self._sessions[old_session_id]
+        
+        return new_session_id, new_session
+```
+
+**When regeneration occurs:**
+- After successful OAuth authentication (privilege level change)
+- Old session ID is immediately invalidated
+- New session ID sent to browser in Set-Cookie header
+- All session data (tokens, user info) preserved
+
+**Attack prevention:**
+1. Attacker obtains session ID `ABC123` before authentication
+2. Attacker tricks victim into using session `ABC123`
+3. Victim authenticates → Session regenerated to `XYZ789`
+4. Attacker's known session `ABC123` is now invalid
+5. Only victim with `XYZ789` has access
+
+This implements the **OWASP-recommended** session fixation protection.
+
+### 6. Session Expiry & Token Validation
+
+Sessions are automatically invalidated when either the session TTL expires **or** the JWT token expires, whichever comes first. This ensures sessions cannot outlive their underlying authentication tokens.
+
+```python
+def _is_token_expired(tokens):
+    """Check if tokens are expired based on JWT exp claim or expires_at."""
+    if not tokens:
+        return True
+    
+    # Check expires_at timestamp
+    expires_at_str = tokens.get('expires_at')
+    if expires_at_str:
+        expires_at = datetime.fromisoformat(expires_at_str)
+        if expires_at < datetime.now(timezone.utc):
+            return True
+    
+    # Also check JWT exp claim from access_token
+    access_token = tokens.get('access_token')
+    if access_token:
+        jwt_expiry = _extract_jwt_expiry(access_token)
+        if jwt_expiry and jwt_expiry < datetime.now(timezone.utc):
+            return True
+    
+    return False
 
 def get(self, session_id):
+    """Get session data by ID, refreshing expiry if valid"""
     session = self._sessions.get(session_id)
+    
+    # Check session TTL expiry
     if self._is_expired(session):
-        del self._sessions[session_id]  # Auto-cleanup
+        del self._sessions[session_id]
         return None
-    # Refresh expiry on access
+    
+    # Check if tokens are expired (critical security check)
+    if session.get('authenticated'):
+        encrypted = session.get('_encrypted_tokens')
+        if encrypted:
+            tokens = self._decrypt_tokens(encrypted)
+            if _is_token_expired(tokens):
+                logger.info('Session %s invalidated due to expired tokens', session_id[:8])
+                del self._sessions[session_id]
+                return None
+    
+    # Refresh session expiry on access
     session['_session_expires_at'] = datetime.now(timezone.utc) + timedelta(seconds=self.ttl_seconds)
     return session
 ```
 
-### 6. Secure Token Exchange
+**Key behaviors:**
+
+1. **Dual expiry check** - Both session TTL and JWT token expiry are validated
+2. **JWT exp claim** - Extracts `exp` claim from access token and validates it
+3. **expires_at field** - Also checks the `expires_at` timestamp from token response
+4. **Automatic invalidation** - Sessions are deleted immediately when tokens expire
+5. **Security guarantee** - Sessions **cannot** outlive their JWT tokens
+
+**Example scenario:**
+- Session TTL: 3600 seconds (1 hour)
+- JWT token expiry: 1800 seconds (30 minutes)
+- **Result**: Session invalidated after 30 minutes (JWT expiry takes precedence)
+
+This prevents the security issue where a session could remain valid after the underlying authentication token has expired.
+
+### 7. Secure Token Exchange
 
 Token exchange happens server-to-server over HTTPS:
 
@@ -634,6 +737,11 @@ Response shows:
 - Expected behavior (in-memory storage)
 - Implement Redis/database session store for persistence
 
+**Session valid but tokens expired:**
+- Session automatically invalidated on next access
+- User must re-authenticate to obtain new tokens
+- This is expected behavior and ensures security
+
 ### CSRF Errors
 
 **CSRF token validation failed:**
@@ -657,3 +765,5 @@ Key files implementing OAuth/OIDC integration:
 - [`src/web_server.py`](../src/web_server.py) - Flask app with OAuth middleware
 - [`templates/base.html`](../templates/base.html) - Frontend OAuth integration
 - [`README.md`](../README.md) - Configuration documentation
+- [`docs/ephemeral/SECURITY_CHECK_MEASURES_03.md`](ephemeral/SECURITY_CHECK_MEASURES_03.md) - Session fixation protection details
+- [`tests/test_session_fixation.py`](../tests/test_session_fixation.py) - Session regeneration tests

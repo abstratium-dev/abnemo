@@ -91,10 +91,10 @@ Next, install dependencies:
 # 1. Install dependencies
 # System packages (recommended if using system Python)
 # Ubuntu/Debian
-sudo apt install python3-scapy python3-dnspython python3-tabulate python3-bpfcc python3-bcc python3-flask python3-flask-wtf python3-watchdog python3-cryptography
+sudo apt install python3-scapy python3-dnspython python3-tabulate python3-bpfcc python3-flask python3-flaskext.wtf python3-watchdog python3-cryptography
 
 # Fedora/RHEL
-sudo dnf install python3-scapy python3-dnspython python3-tabulate python3-bcc python3-flask python3-flask-wtf python3-watchdog python3-cryptography
+sudo dnf install python3-scapy python3-dns python3-tabulate python3-bcc python3-flask python3-flask-wtf python3-watchdog python3-cryptography
 
 # 2. Build eBPF program
 sudo ./scripts/build_ebpf.sh 

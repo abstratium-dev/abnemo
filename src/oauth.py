@@ -239,6 +239,49 @@ class MemorySessionStore:
         with self._lock:
             self._sessions.pop(session_id, None)
 
+    def regenerate_session(self, old_session_id):
+        """Regenerate session ID to prevent session fixation attacks.
+        
+        This method creates a new session ID and transfers all session data
+        from the old session to the new one, then deletes the old session.
+        This is critical for preventing session fixation attacks where an
+        attacker tricks a victim into using a known session ID.
+        
+        Args:
+            old_session_id: The current session ID to regenerate
+        
+        Returns:
+            Tuple of (new_session_id, session_data) or (None, None) if old session not found
+        """
+        if not old_session_id:
+            return None, None
+        
+        with self._lock:
+            # Get the old session data
+            old_session = self._sessions.get(old_session_id)
+            if not old_session:
+                return None, None
+            
+            # Generate a new session ID
+            new_session_id = secrets.token_urlsafe(32)
+            
+            # Copy all data from old session to new session
+            # This preserves authentication state, user info, tokens, etc.
+            new_session = old_session.copy()
+            
+            # Update expiry time for the new session
+            new_session['_session_expires_at'] = self._now() + timedelta(seconds=self.ttl_seconds)
+            
+            # Store the new session
+            self._sessions[new_session_id] = new_session
+            
+            # Delete the old session to prevent reuse
+            del self._sessions[old_session_id]
+            
+            logger.info('Session regenerated: %s -> %s', old_session_id[:8], new_session_id[:8])
+            
+            return new_session_id, new_session
+
     def _encrypt_tokens(self, tokens):
         """Encrypt token dictionary for secure storage.
         
@@ -483,16 +526,32 @@ def register_oauth_routes(app, oauth_config, session_store):
         except Exception:
             return redirect('/?error=token_exchange_failed')
 
-        session.pop('pkce', None)
-        session['authenticated'] = True
+        # SECURITY: Regenerate session ID after successful authentication
+        # This prevents session fixation attacks (OWASP recommendation)
+        old_session_id = g.session_id
+        new_session_id, new_session_data = session_store.regenerate_session(old_session_id)
+        
+        if not new_session_id:
+            logger.error('Failed to regenerate session after authentication')
+            return redirect('/?error=session_regeneration_failed')
+        
+        # Update g with new session ID and data
+        g.session_id = new_session_id
+        g.session_data = new_session_data
+        g.session_regenerated = True  # Flag to update cookie in after_request
+        
+        # Now update the new session with authentication data
+        new_session_data.pop('pkce', None)
+        new_session_data['authenticated'] = True
+        
         # Store tokens encrypted in session store
         token_data = {
             'access_token': tokens.get('access_token'),
             'refresh_token': tokens.get('refresh_token'),
             'expires_at': (datetime.now(timezone.utc) + timedelta(seconds=tokens.get('expires_in', 3600))).isoformat()
         }
-        session_store.store_tokens(g.session_id, token_data)
-        session['user'] = extract_user(tokens)
+        session_store.store_tokens(new_session_id, token_data)
+        new_session_data['user'] = extract_user(tokens)
 
         return redirect('/')
 

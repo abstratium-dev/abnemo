@@ -1169,9 +1169,13 @@ async function saveNewFilter() {
     }
     
     try {
+        const csrfToken = getCsrfToken();
         const response = await fetch('/api/accept-list-filters', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
             body: JSON.stringify({ pattern, description })
         });
         
@@ -1257,9 +1261,13 @@ async function saveFilterEdit(filterId) {
     }
     
     try {
+        const csrfToken = getCsrfToken();
         const response = await fetch(`/api/accept-list-filters/${filterId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
             body: JSON.stringify({ pattern, description })
         });
         
@@ -1288,8 +1296,12 @@ async function deleteFilter(filterId) {
     }
     
     try {
+        const csrfToken = getCsrfToken();
         const response = await fetch(`/api/accept-list-filters/${filterId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-Token': csrfToken
+            }
         });
         
         if (!response.ok) {
@@ -1599,9 +1611,13 @@ async function saveNewWarnlist() {
     }
     
     try {
+        const csrfToken = getCsrfToken();
         const response = await fetch('/api/warnlist-filters', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
             body: JSON.stringify({ pattern, description })
         });
         
@@ -1683,9 +1699,13 @@ async function saveWarnlistEdit(filterId) {
     }
     
     try {
+        const csrfToken = getCsrfToken();
         const response = await fetch(`/api/warnlist-filters/${filterId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
             body: JSON.stringify({ pattern, description })
         });
         
@@ -1714,8 +1734,12 @@ async function deleteWarnlist(filterId) {
     }
     
     try {
+        const csrfToken = getCsrfToken();
         const response = await fetch(`/api/warnlist-filters/${filterId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-Token': csrfToken
+            }
         });
         
         if (!response.ok) {

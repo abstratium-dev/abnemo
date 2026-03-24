@@ -380,10 +380,12 @@ async function banIP(event) {
     setButtonLoading(submitButton, true);
     
     try {
+        const csrfToken = getCsrfToken();
         const response = await fetch('/api/ip-bans', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
             },
             body: JSON.stringify({ ip: ipAddress })
         });
@@ -430,8 +432,12 @@ async function unbanIP(ipAddress, buttonElement) {
     }
     
     try {
+        const csrfToken = getCsrfToken();
         const response = await fetch(`/api/ip-bans/${encodeURIComponent(ipAddress)}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-Token': csrfToken
+            }
         });
         
         const data = await response.json();

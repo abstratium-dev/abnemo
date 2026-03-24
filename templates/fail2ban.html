@@ -233,10 +233,12 @@ async function visualizeCustomConfig() {
     container.innerHTML = '<div class="loading">Generating visualization...</div>';
     
     try {
+        const csrfToken = getCsrfToken();
         const response = await fetch('/api/fail2ban/visualize/custom', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
             },
             body: JSON.stringify({ config: config })
         });
