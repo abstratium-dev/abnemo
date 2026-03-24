@@ -81,6 +81,7 @@ apt-get install -y \
     python3-tabulate \
     python3-bpfcc \
     python3-bcc \
+    python3-jwt \
     clang \
     llvm \
     libelf-dev \
@@ -125,6 +126,7 @@ prompt_with_default ABSTRAUTH_CLIENT_SECRET "ABSTRAUTH_CLIENT_SECRET" "" true
 prompt_with_default ABSTRAUTH_AUTHORIZATION_ENDPOINT "ABSTRAUTH_AUTHORIZATION_ENDPOINT" "https://auth-t.abstratium.dev/oauth2/authorize" false
 prompt_with_default ABSTRAUTH_TOKEN_ENDPOINT "ABSTRAUTH_TOKEN_ENDPOINT" "https://auth-t.abstratium.dev/oauth2/token" false
 prompt_with_default ABSTRAUTH_REDIRECT_URI "ABSTRAUTH_REDIRECT_URI" "http://localhost:40002/oauth/callback" false
+prompt_with_default ABSTRAUTH_WELLKNOWN_URI "ABSTRAUTH_WELLKNOWN_URI" "https://auth-t.abstratium.dev/.well-known/oauth-authorization-server" false
 prompt_with_default FLASK_ENV "FLASK_ENV (production or development)" "production" false
 prompt_with_default ABSTRAUTH_COOKIE_SECURE "ABSTRAUTH_COOKIE_SECURE (auto, true, or false)" "auto" false
 prompt_with_default ABSTRAUTH_SESSION_TTL "ABSTRAUTH_SESSION_TTL" "900" false
@@ -169,6 +171,7 @@ ABSTRAUTH_CLIENT_SECRET=${ABSTRAUTH_CLIENT_SECRET}
 ABSTRAUTH_AUTHORIZATION_ENDPOINT=${ABSTRAUTH_AUTHORIZATION_ENDPOINT}
 ABSTRAUTH_TOKEN_ENDPOINT=${ABSTRAUTH_TOKEN_ENDPOINT}
 ABSTRAUTH_REDIRECT_URI=${ABSTRAUTH_REDIRECT_URI}
+ABSTRAUTH_WELLKNOWN_URI=${ABSTRAUTH_WELLKNOWN_URI}
 ABSTRAUTH_COOKIE_SECURE=${ABSTRAUTH_COOKIE_SECURE}
 ABSTRAUTH_SESSION_TTL=${ABSTRAUTH_SESSION_TTL}
 ABSTRAUTH_REQUIRED_GROUPS=${ABSTRAUTH_REQUIRED_GROUPS}

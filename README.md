@@ -91,10 +91,10 @@ Next, install dependencies:
 # 1. Install dependencies
 # System packages (recommended if using system Python)
 # Ubuntu/Debian
-sudo apt install python3-scapy python3-dnspython python3-tabulate python3-bpfcc python3-flask python3-flaskext.wtf python3-watchdog python3-cryptography
+sudo apt install python3-scapy python3-dnspython python3-tabulate python3-bpfcc python3-flask python3-flaskext.wtf python3-watchdog python3-cryptography python3-jwt
 
 # Fedora/RHEL
-sudo dnf install python3-scapy python3-dns python3-tabulate python3-bcc python3-flask python3-flask-wtf python3-watchdog python3-cryptography
+sudo dnf install python3-scapy python3-dns python3-tabulate python3-bcc python3-flask python3-flask-wtf python3-watchdog python3-cryptography python3-jwt
 
 # 2. Build eBPF program
 sudo ./scripts/build_ebpf.sh 
@@ -315,6 +315,7 @@ Set these before starting `./scripts/abnemo.sh monitor --web`. Authentication ga
 | `ABSTRAUTH_AUTHORIZATION_ENDPOINT` | ✅ | Full URL to Abstrauth's `/oauth2/authorize` endpoint |
 | `ABSTRAUTH_TOKEN_ENDPOINT` | ✅ | Full URL to the `/oauth2/token` endpoint |
 | `ABSTRAUTH_REDIRECT_URI` | ✅ | Callback handled by Abnemo (e.g., `https://monitor.example.com/oauth/callback`) |
+| `ABSTRAUTH_WELLKNOWN_URI` | ✅ | Full URL to Abstrauth's well-known configuration endpoint (e.g., `https://auth.example.com/.well-known/oauth-authorization-server`) |
 | `ABSTRAUTH_SCOPE` | ⛔ (defaults to `openid profile email`) | Space-delimited scopes requested during login |
 | `ABSTRAUTH_SESSION_COOKIE` | ⛔ (`abnemo_session`) | Name of the HTTP-only session cookie (auto-prefixed with `__Host-` in production) |
 | `ABSTRAUTH_COOKIE_SECURE` | ⛔ (`auto`) | Cookie security: `auto` (default, enables in production), `true`, or `false` |
@@ -337,6 +338,7 @@ export ABSTRAUTH_CLIENT_SECRET="<super-secret>"
 export ABSTRAUTH_AUTHORIZATION_ENDPOINT="https://auth.example.com/oauth2/authorize"
 export ABSTRAUTH_TOKEN_ENDPOINT="https://auth.example.com/oauth2/token"
 export ABSTRAUTH_REDIRECT_URI="https://monitor.example.com/oauth/callback"
+export ABSTRAUTH_WELLKNOWN_URI="https://auth.example.com/.well-known/oauth-authorization-server"
 export ABSTRAUTH_REQUIRED_GROUPS="abnemo_admins"
 export FLASK_ENV=production           # enables secure cookies automatically
 export ABSTRAUTH_COOKIE_SECURE=auto   # auto-detects based on FLASK_ENV (recommended)

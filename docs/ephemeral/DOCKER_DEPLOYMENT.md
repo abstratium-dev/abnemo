@@ -54,6 +54,7 @@ RUN apt-get update && apt-get install -y \
     python3-flask-wtf \
     python3-watchdog \
     python3-cryptography \
+    python3-jwt \
     # eBPF/BCC dependencies
     python3-bpfcc \
     bpfcc-tools \
@@ -128,6 +129,7 @@ services:
       - ABSTRAUTH_AUTHORIZATION_ENDPOINT=${ABSTRAUTH_AUTHORIZATION_ENDPOINT:-}
       - ABSTRAUTH_TOKEN_ENDPOINT=${ABSTRAUTH_TOKEN_ENDPOINT:-}
       - ABSTRAUTH_REDIRECT_URI=${ABSTRAUTH_REDIRECT_URI:-}
+      - ABSTRAUTH_WELLKNOWN_URI=${ABSTRAUTH_WELLKNOWN_URI:-}
       - ABSTRAUTH_REQUIRED_GROUPS=${ABSTRAUTH_REQUIRED_GROUPS:-}
       - ABSTRAUTH_COOKIE_SECURE=${ABSTRAUTH_COOKIE_SECURE:-false}
     restart: unless-stopped
@@ -214,6 +216,7 @@ Pass these via `-e` flag or in `docker-compose.yml`:
 | `ABSTRAUTH_AUTHORIZATION_ENDPOINT` | OAuth authorization URL | None |
 | `ABSTRAUTH_TOKEN_ENDPOINT` | OAuth token URL | None |
 | `ABSTRAUTH_REDIRECT_URI` | OAuth callback URL | None |
+| `ABSTRAUTH_WELLKNOWN_URI` | OAuth well-known configuration URL | None |
 | `ABSTRAUTH_REQUIRED_GROUPS` | Required user groups | None |
 
 ### Command Line Arguments
@@ -300,6 +303,7 @@ export ABSTRAUTH_CLIENT_SECRET="<secret>"
 export ABSTRAUTH_AUTHORIZATION_ENDPOINT="https://auth.example.com/oauth2/authorize"
 export ABSTRAUTH_TOKEN_ENDPOINT="https://auth.example.com/oauth2/token"
 export ABSTRAUTH_REDIRECT_URI="https://monitor.example.com/oauth/callback"
+export ABSTRAUTH_WELLKNOWN_URI="https://auth.example.com/.well-known/oauth-authorization-server"
 export ABSTRAUTH_REQUIRED_GROUPS="abnemo_admins,abnemo_viewers"
 export ABSTRAUTH_COOKIE_SECURE=true
 
@@ -447,6 +451,7 @@ services:
       - ABSTRAUTH_AUTHORIZATION_ENDPOINT=${ABSTRAUTH_AUTHORIZATION_ENDPOINT}
       - ABSTRAUTH_TOKEN_ENDPOINT=${ABSTRAUTH_TOKEN_ENDPOINT}
       - ABSTRAUTH_REDIRECT_URI=https://monitor.example.com/oauth/callback
+      - ABSTRAUTH_WELLKNOWN_URI=https://auth.example.com/.well-known/oauth-authorization-server
       - ABSTRAUTH_REQUIRED_GROUPS=abnemo_admins
       - ABSTRAUTH_COOKIE_SECURE=true
     restart: unless-stopped

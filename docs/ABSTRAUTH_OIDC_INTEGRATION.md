@@ -288,6 +288,7 @@ All configuration is done via environment variables with the `ABSTRAUTH_` prefix
 | `ABSTRAUTH_AUTHORIZATION_ENDPOINT` | ✅ | - | Full URL to `/oauth2/authorize` endpoint |
 | `ABSTRAUTH_TOKEN_ENDPOINT` | ✅ | - | Full URL to `/oauth2/token` endpoint |
 | `ABSTRAUTH_REDIRECT_URI` | ✅ | - | Callback URL (e.g., `https://monitor.example.com/oauth/callback`) |
+| `ABSTRAUTH_WELLKNOWN_URI` | ✅ | - | Full URL to well-known configuration endpoint (e.g., `https://auth.example.com/.well-known/oauth-authorization-server`) |
 | `ABSTRAUTH_SCOPE` | ⛔ | `openid profile email` | Space-delimited OAuth scopes |
 | `ABSTRAUTH_SESSION_COOKIE` | ⛔ | `abnemo_session` | Session cookie name |
 | `ABSTRAUTH_COOKIE_SECURE` | ⛔ | `false` | Set to `true` for HTTPS-only cookies |
@@ -304,6 +305,7 @@ export ABSTRAUTH_CLIENT_SECRET="super-secret-value-here"
 export ABSTRAUTH_AUTHORIZATION_ENDPOINT="https://auth.example.com/oauth2/authorize"
 export ABSTRAUTH_TOKEN_ENDPOINT="https://auth.example.com/oauth2/token"
 export ABSTRAUTH_REDIRECT_URI="https://monitor.example.com/oauth/callback"
+export ABSTRAUTH_WELLKNOWN_URI="https://auth.example.com/.well-known/oauth-authorization-server"
 
 # Optional: Scope configuration
 export ABSTRAUTH_SCOPE="openid profile email groups"
@@ -331,11 +333,12 @@ def build_oauth_config():
         'authorization_endpoint': os.getenv('ABSTRAUTH_AUTHORIZATION_ENDPOINT'),
         'token_endpoint': os.getenv('ABSTRAUTH_TOKEN_ENDPOINT'),
         'redirect_uri': os.getenv('ABSTRAUTH_REDIRECT_URI'),
+        'wellknown_uri': os.getenv('ABSTRAUTH_WELLKNOWN_URI'),
         # ... other config
     }
     
     required = ['client_id', 'client_secret', 'authorization_endpoint', 
-                'token_endpoint', 'redirect_uri']
+                'token_endpoint', 'redirect_uri', 'wellknown_uri']
     config['enabled'] = all(config[key] for key in required)
     
     return config

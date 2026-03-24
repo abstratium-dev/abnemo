@@ -41,6 +41,7 @@ class TestCookieSecurityAttributes:
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
             'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration',
             'FLASK_ENV': 'production'
         }):
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -69,6 +70,7 @@ class TestCookieSecurityAttributes:
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
             'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration',
             'FLASK_ENV': 'production'
         }):
             config = build_oauth_config()
@@ -84,6 +86,7 @@ class TestCookieSecurityAttributes:
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
             'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration',
             'FLASK_ENV': 'development',
             'ABSTRAUTH_COOKIE_SECURE': 'false'
         }):
@@ -114,6 +117,7 @@ class TestCookieSecurityAttributes:
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
             'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration',
             'FLASK_ENV': 'development'
         }):
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -141,6 +145,7 @@ class TestCookieSecurityAttributes:
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
             'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration',
             'FLASK_ENV': 'production'
         }):
             config = build_oauth_config()
@@ -157,6 +162,7 @@ class TestCookieSecurityAttributes:
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
             'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration',
             'FLASK_ENV': 'development',
             'ABSTRAUTH_COOKIE_SECURE': 'false'
         }):
@@ -174,6 +180,7 @@ class TestCookieSecurityAttributes:
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
             'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration',
             'FLASK_ENV': 'production'
         }):
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -201,6 +208,7 @@ class TestCookieSecurityAttributes:
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
             'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration',
             'FLASK_ENV': 'production'
         }):
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -232,7 +240,8 @@ class TestSecurityHeaders:
             'ABSTRAUTH_CLIENT_SECRET': 'test_secret',
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
-            'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback'
+            'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration'
         }):
             with tempfile.TemporaryDirectory() as tmpdir:
                 app = create_app(tmpdir)
@@ -260,7 +269,8 @@ class TestSecurityHeaders:
             'ABSTRAUTH_CLIENT_SECRET': 'test_secret',
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
-            'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback'
+            'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration'
         }):
             with tempfile.TemporaryDirectory() as tmpdir:
                 app = create_app(tmpdir)
@@ -278,7 +288,8 @@ class TestSecurityHeaders:
             'ABSTRAUTH_CLIENT_SECRET': 'test_secret',
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
-            'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback'
+            'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration'
         }):
             with tempfile.TemporaryDirectory() as tmpdir:
                 app = create_app(tmpdir)
@@ -317,7 +328,8 @@ class TestSecurityHeaders:
             'ABSTRAUTH_CLIENT_SECRET': 'test_secret',
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
-            'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback'
+            'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration'
         }):
             with tempfile.TemporaryDirectory() as tmpdir:
                 app = create_app(tmpdir)
@@ -335,7 +347,8 @@ class TestSecurityHeaders:
             'ABSTRAUTH_CLIENT_SECRET': 'test_secret',
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
-            'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback'
+            'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration'
         }):
             with tempfile.TemporaryDirectory() as tmpdir:
                 app = create_app(tmpdir)
@@ -364,7 +377,8 @@ class TestCookieSecurityAttackPrevention:
             'ABSTRAUTH_CLIENT_SECRET': 'test_secret',
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
-            'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback'
+            'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration'
         }):
             with tempfile.TemporaryDirectory() as tmpdir:
                 app = create_app(tmpdir)
@@ -391,7 +405,8 @@ class TestCookieSecurityAttackPrevention:
             'ABSTRAUTH_CLIENT_SECRET': 'test_secret',
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
-            'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback'
+            'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration'
         }):
             config = build_oauth_config()
             
@@ -416,6 +431,7 @@ class TestCookieSecurityAttackPrevention:
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
             'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration',
             'FLASK_ENV': 'production'
         }):
             config = build_oauth_config()
@@ -438,6 +454,7 @@ class TestCookieSecurityAttackPrevention:
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
             'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration',
             'FLASK_ENV': 'production'
         }):
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -468,6 +485,7 @@ class TestCookieConfigurationValidation:
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
             'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration',
             'FLASK_ENV': 'production',
             'ABSTRAUTH_COOKIE_SECURE': 'auto'
         }):
@@ -482,6 +500,7 @@ class TestCookieConfigurationValidation:
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
             'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration',
             'FLASK_ENV': 'development',
             'ABSTRAUTH_COOKIE_SECURE': 'auto'
         }):
@@ -496,6 +515,7 @@ class TestCookieConfigurationValidation:
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
             'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration',
             'FLASK_ENV': 'development',
             'ABSTRAUTH_COOKIE_SECURE': 'true'
         }):
@@ -510,6 +530,7 @@ class TestCookieConfigurationValidation:
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
             'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration',
             'FLASK_ENV': 'production',
             'ABSTRAUTH_SESSION_COOKIE': 'my_custom_session'
         }):

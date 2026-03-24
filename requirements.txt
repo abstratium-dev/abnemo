@@ -5,3 +5,4 @@ flask>=2.3.0
 flask-wtf>=1.2.0
 watchdog>=3.0.0
 cryptography>=41.0.0
+pyjwt[crypto]>=2.8.0

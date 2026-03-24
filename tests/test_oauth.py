@@ -274,6 +274,7 @@ class TestOAuthConfig:
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
             'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/oauth-authorization-server',
             'ABSTRAUTH_SCOPE': 'openid profile email',
             'ABSTRAUTH_SESSION_COOKIE': 'my_session',
             'ABSTRAUTH_COOKIE_SECURE': 'true',
@@ -289,7 +290,7 @@ class TestOAuthConfig:
             assert config['token_endpoint'] == 'https://auth.example.com/token'
             assert config['redirect_uri'] == 'https://app.example.com/callback'
             assert config['scope'] == 'openid profile email'
-            assert config['session_cookie_name'] == 'my_session'
+            assert config['session_cookie_name'] == '__Host-my_session'  # __Host- prefix added when secure=true
             assert config['cookie_secure'] is True
             assert config['cookie_samesite'] == 'Lax'
             assert config['session_ttl'] == 7200
@@ -312,6 +313,8 @@ class TestOAuthConfig:
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
             'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration',
+            'FLASK_ENV': 'development',  # Set to development to avoid __Host- prefix
         }, clear=True):
             config = build_oauth_config()
             
@@ -329,6 +332,7 @@ class TestOAuthConfig:
             'ABSTRAUTH_AUTHORIZATION_ENDPOINT': 'https://auth.example.com/authorize',
             'ABSTRAUTH_TOKEN_ENDPOINT': 'https://auth.example.com/token',
             'ABSTRAUTH_REDIRECT_URI': 'https://app.example.com/callback',
+            'ABSTRAUTH_WELLKNOWN_URI': 'https://auth.example.com/.well-known/openid-configuration',
             'ABSTRAUTH_REQUIRED_GROUP': 'admin'
         }, clear=True):
             config = build_oauth_config()
@@ -345,6 +349,7 @@ class TestOAuthConfig:
             'authorization_endpoint': 'https://auth.example.com/authorize',
             'token_endpoint': 'https://auth.example.com/token',
             'redirect_uri': 'https://app.example.com/callback',
+            'wellknown_uri': 'https://auth.example.com/.well-known/openid-configuration',
             'scope': 'openid profile',
             'session_cookie_name': 'my_session',
             'cookie_secure': True,

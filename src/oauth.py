@@ -19,8 +19,16 @@ from flask_wtf.csrf import validate_csrf
 from flask import request
 from werkzeug.exceptions import BadRequest
 from cryptography.fernet import Fernet, InvalidToken
+import jwt
+from jwt import PyJWKClient
 
 logger = logging.getLogger(__name__)
+
+# Global JWKS client cache - initialized when OAuth is configured
+_jwks_client = None
+_jwks_client_lock = threading.Lock()
+_jwks_last_refresh = None
+_jwks_refresh_interval = timedelta(days=1)  # Refresh JWKS once per day
 
 
 def _base64url_encode(data):
@@ -45,7 +53,11 @@ def _build_code_challenge(code_verifier):
 
 
 def _parse_jwt_claims(token):
-    """Parse JWT token claims without verification (for display only)"""
+    """Parse JWT token claims without verification (for display only - DO NOT USE FOR AUTHORIZATION)
+    
+    WARNING: This function does NOT validate the JWT signature.
+    Use _validate_jwt_token() for any authorization decisions.
+    """
     if not token or '.' not in token:
         return {}
     try:
@@ -74,6 +86,177 @@ def _extract_jwt_expiry(token):
         except (ValueError, OSError, TypeError):
             return None
     return None
+
+
+def _get_jwks_uri_from_wellknown(wellknown_uri):
+    """Fetch JWKS URI from the well-known OIDC configuration endpoint.
+    
+    Args:
+        wellknown_uri: URL to the .well-known/oauth-authorization-server endpoint
+    
+    Returns:
+        JWKS URI string or None if not found
+    """
+    try:
+        request_obj = urllib.request.Request(wellknown_uri)
+        with urllib.request.urlopen(request_obj, timeout=10) as response:
+            body = response.read().decode('utf-8')
+            config = json.loads(body)
+            jwks_uri = config.get('jwks_uri')
+            if jwks_uri:
+                logger.info('Fetched JWKS URI from well-known endpoint: %s', jwks_uri)
+                return jwks_uri
+            else:
+                logger.error('No jwks_uri found in well-known configuration')
+                return None
+    except Exception as e:
+        logger.error('Failed to fetch JWKS URI from %s: %s', wellknown_uri, e)
+        return None
+
+
+def _get_jwks_client(oauth_config):
+    """Get or create a PyJWKClient for JWT validation.
+    
+    This function manages a singleton JWKS client that:
+    - Fetches public keys from the OAuth provider's JWKS endpoint
+    - Caches keys to avoid repeated network requests
+    - Automatically refreshes keys when needed
+    - Refreshes the JWKS URI once per day from the well-known endpoint
+    
+    Args:
+        oauth_config: OAuth configuration dictionary with wellknown_uri
+    
+    Returns:
+        PyJWKClient instance or None if configuration is invalid
+    """
+    global _jwks_client, _jwks_last_refresh
+    
+    if not oauth_config.get('enabled'):
+        return None
+    
+    wellknown_uri = oauth_config.get('wellknown_uri')
+    if not wellknown_uri:
+        logger.error('No wellknown_uri configured for JWT validation')
+        return None
+    
+    with _jwks_client_lock:
+        now = datetime.now(timezone.utc)
+        
+        # Check if we need to refresh the JWKS client (once per day)
+        needs_refresh = (
+            _jwks_client is None or
+            _jwks_last_refresh is None or
+            (now - _jwks_last_refresh) > _jwks_refresh_interval
+        )
+        
+        if needs_refresh:
+            logger.info('Refreshing JWKS client from well-known endpoint')
+            jwks_uri = _get_jwks_uri_from_wellknown(wellknown_uri)
+            
+            if jwks_uri:
+                try:
+                    # Create new PyJWKClient with caching enabled
+                    # cache_keys=True enables in-memory caching of keys
+                    # max_cached_keys=16 limits memory usage
+                    _jwks_client = PyJWKClient(
+                        jwks_uri,
+                        cache_keys=True,
+                        max_cached_keys=16,
+                        lifespan=3600  # Cache keys for 1 hour
+                    )
+                    _jwks_last_refresh = now
+                    logger.info('JWKS client initialized successfully')
+                except Exception as e:
+                    logger.error('Failed to create JWKS client: %s', e)
+                    _jwks_client = None
+            else:
+                _jwks_client = None
+        
+        return _jwks_client
+
+
+def _validate_jwt_token(token, oauth_config, verify_exp=True):
+    """Validate JWT token signature and claims using JWKS public keys.
+    
+    This function implements industry-standard JWT validation:
+    1. Fetches the appropriate public key from JWKS endpoint
+    2. Verifies the token signature using RS256 algorithm
+    3. Validates standard claims (exp, iss, aud if configured)
+    4. Returns decoded and verified claims
+    
+    Args:
+        token: JWT token string to validate
+        oauth_config: OAuth configuration dictionary
+        verify_exp: Whether to verify token expiration (default: True)
+    
+    Returns:
+        Dictionary of validated claims or None if validation fails
+    """
+    if not token:
+        logger.warning('JWT validation failed: empty token')
+        return None
+    
+    jwks_client = _get_jwks_client(oauth_config)
+    if not jwks_client:
+        logger.error('JWT validation failed: JWKS client not available')
+        return None
+    
+    try:
+        # Get the signing key from the token's kid header
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
+        
+        # Get the algorithm from the token header
+        unverified_header = jwt.get_unverified_header(token)
+        token_alg = unverified_header.get('alg', 'RS256')
+        
+        # Log token details for debugging (without signature)
+        unverified_claims = _parse_jwt_claims(token)
+        logger.debug('JWT token details: alg=%s, kid=%s, iss=%s, aud=%s, sub=%s', 
+                   token_alg, 
+                   unverified_header.get('kid', 'none'),
+                   unverified_claims.get('iss', 'none'),
+                   unverified_claims.get('aud', 'none'),
+                   unverified_claims.get('sub', 'none'))
+        
+        # Only allow secure RSA algorithms to prevent algorithm confusion attacks
+        # RS256 = RSA-PKCS1 with SHA-256 (widely used)
+        # PS256 = RSA-PSS with SHA-256 (more secure, used by Abstrauth)
+        allowed_algorithms = ['RS256', 'PS256']
+        if token_alg not in allowed_algorithms:
+            logger.warning('JWT validation failed: unsupported algorithm %s (only %s allowed)', 
+                          token_alg, ', '.join(allowed_algorithms))
+            return None
+        
+        # Decode and validate the token
+        # - Verifies signature using the public key
+        # - Validates expiration time (exp claim)
+        # - Does NOT validate audience (aud) - this is optional in OIDC and depends on provider config
+        decoded = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=allowed_algorithms,  # Accept RS256 and PS256 (both secure RSA algorithms)
+            options={
+                'verify_signature': True,
+                'verify_exp': verify_exp,
+                'verify_iat': True,
+                'verify_aud': False,  # Don't validate audience - not all OIDC providers include it
+                'require': ['exp', 'iat']  # Require these claims to be present
+            }
+        )
+        
+        logger.info('JWT validation successful for sub=%s, groups=%s', 
+                   decoded.get('sub'), decoded.get('groups', []))
+        return decoded
+        
+    except jwt.ExpiredSignatureError:
+        logger.warning('JWT validation failed: token expired')
+        return None
+    except jwt.InvalidTokenError as e:
+        logger.warning('JWT validation failed: %s', e)
+        return None
+    except Exception as e:
+        logger.error('JWT validation error: %s', e)
+        return None
 
 
 def _is_token_expired(tokens):
@@ -138,6 +321,7 @@ def build_oauth_config():
         'authorization_endpoint': os.getenv('ABSTRAUTH_AUTHORIZATION_ENDPOINT'),
         'token_endpoint': os.getenv('ABSTRAUTH_TOKEN_ENDPOINT'),
         'redirect_uri': os.getenv('ABSTRAUTH_REDIRECT_URI'),
+        'wellknown_uri': os.getenv('ABSTRAUTH_WELLKNOWN_URI'),
         'scope': os.getenv('ABSTRAUTH_SCOPE', 'openid profile email'),
         'session_cookie_name': session_cookie_name,
         'cookie_secure': cookie_secure,
@@ -157,7 +341,7 @@ def build_oauth_config():
     config['required_group'] = required_groups[0] if len(required_groups) == 1 else None
     
     # Check if all required fields are present
-    required = ['client_id', 'client_secret', 'authorization_endpoint', 'token_endpoint', 'redirect_uri']
+    required = ['client_id', 'client_secret', 'authorization_endpoint', 'token_endpoint', 'redirect_uri', 'wellknown_uri']
     config['enabled'] = all(config[key] for key in required)
     
     return config
@@ -179,6 +363,7 @@ def summarize_oauth_config(config):
         'authorization_endpoint': bool(config.get('authorization_endpoint')),
         'token_endpoint': bool(config.get('token_endpoint')),
         'redirect_uri': bool(config.get('redirect_uri')),
+        'wellknown_uri': bool(config.get('wellknown_uri')),
         'scope': config.get('scope'),
         'session_cookie_name': config.get('session_cookie_name'),
         'cookie_secure': config.get('cookie_secure'),
@@ -431,17 +616,33 @@ def exchange_code_for_token(config, code, code_verifier):
         raise
 
 
-def extract_user(tokens):
-    """Extract user information from tokens
+def extract_user(tokens, oauth_config=None):
+    """Extract user information from tokens with signature validation.
     
     Args:
         tokens: Token response dictionary
+        oauth_config: OAuth configuration (required for JWT validation)
     
     Returns:
-        User dictionary with sub, email, name, groups
+        User dictionary with sub, email, name, groups or None if validation fails
     """
     token = tokens.get('id_token') or tokens.get('access_token')
-    claims = _parse_jwt_claims(token)
+    if not token:
+        return None
+    
+    # SECURITY: Validate JWT signature before trusting claims
+    # This prevents token forgery attacks
+    claims = None
+    if oauth_config and oauth_config.get('enabled'):
+        claims = _validate_jwt_token(token, oauth_config)
+        if not claims:
+            logger.error('JWT validation failed - rejecting token')
+            return None
+    else:
+        # Fallback for when OAuth is disabled (testing/development only)
+        logger.warning('JWT validation skipped - OAuth not enabled')
+        claims = _parse_jwt_claims(token)
+    
     if not claims:
         return None
 
@@ -569,7 +770,7 @@ def register_oauth_routes(app, oauth_config, session_store):
             'expires_at': (datetime.now(timezone.utc) + timedelta(seconds=tokens.get('expires_in', 3600))).isoformat()
         }
         session_store.store_tokens(new_session_id, token_data)
-        new_session_data['user'] = extract_user(tokens)
+        new_session_data['user'] = extract_user(tokens, oauth_config)
 
         return redirect('/')
 
