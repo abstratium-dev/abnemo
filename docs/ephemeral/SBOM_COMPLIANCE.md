@@ -83,7 +83,9 @@ The SBOM provides full transparency of all dependencies, their versions, and kno
 - dnspython >= 2.4.0
 - tabulate >= 0.9.0
 - flask >= 2.3.0
+- flask-wtf >= 1.1.0
 - watchdog >= 3.0.0
+- cryptography >= 41.0.0
 
 ### Development Dependencies
 See `requirements-dev.txt` for the complete list of testing and code quality tools.

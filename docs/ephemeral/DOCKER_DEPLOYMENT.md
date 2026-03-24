@@ -51,6 +51,9 @@ RUN apt-get update && apt-get install -y \
     python3-dnspython \
     python3-tabulate \
     python3-flask \
+    python3-flask-wtf \
+    python3-watchdog \
+    python3-cryptography \
     # eBPF/BCC dependencies
     python3-bpfcc \
     bpfcc-tools \

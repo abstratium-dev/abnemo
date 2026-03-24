@@ -91,10 +91,10 @@ Next, install dependencies:
 # 1. Install dependencies
 # System packages (recommended if using system Python)
 # Ubuntu/Debian
-sudo apt install python3-scapy python3-dnspython python3-tabulate python3-bpfcc python3-bcc
+sudo apt install python3-scapy python3-dnspython python3-tabulate python3-bpfcc python3-bcc python3-flask python3-flask-wtf python3-watchdog python3-cryptography
 
 # Fedora/RHEL
-sudo dnf install python3-scapy python3-dnspython python3-tabulate python3-bcc
+sudo dnf install python3-scapy python3-dnspython python3-tabulate python3-bcc python3-flask python3-flask-wtf python3-watchdog python3-cryptography
 
 # 2. Build eBPF program
 sudo ./scripts/build_ebpf.sh 
@@ -348,6 +348,43 @@ Then launch:
 ```
 
 If the Abstrauth variables are not set, the server stays open (no authentication required) so development and local testing remain frictionless.
+
+### CSRF Protection
+
+The web interface includes CSRF (Cross-Site Request Forgery) protection for all state-changing operations. A secret key is required for CSRF token generation:
+
+```bash
+# Generate a secure secret key (recommended for production)
+export FLASK_SECRET_KEY=$(openssl rand -hex 32)
+
+# Or add to ~/.bashrc for persistence
+echo "export FLASK_SECRET_KEY=$(openssl rand -hex 32)" >> ~/.bashrc
+```
+
+If `FLASK_SECRET_KEY` is not set, a random key is generated on startup (suitable for development, but sessions won't persist across restarts).
+
+### Token Encryption
+
+OAuth tokens are encrypted in memory using Fernet (AES-128-CBC + HMAC-SHA256) to protect against memory dump attacks and process inspection. An encryption key is required:
+
+```bash
+# Generate a secure encryption key (recommended for production)
+python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+
+# Set the environment variable
+export ABNEMO_TOKEN_ENCRYPTION_KEY="your-generated-key-here"
+
+# Or add to ~/.bashrc for persistence
+echo "export ABNEMO_TOKEN_ENCRYPTION_KEY=$(python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')" >> ~/.bashrc
+```
+
+**Important:**
+- If `ABNEMO_TOKEN_ENCRYPTION_KEY` is not set, a random key is generated on each server start
+- Tokens encrypted with the old key cannot be decrypted after restart
+- Users will need to re-authenticate after server restart if the key changes
+- For production deployments, use a persistent key stored in a secret manager (AWS Secrets Manager, HashiCorp Vault, Azure Key Vault)
+
+**Security Note:** This encryption protects tokens stored in server memory. It does not replace HTTPS for protecting tokens in transit.
 
 ## IP Address Classification
 

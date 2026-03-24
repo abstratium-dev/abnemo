@@ -842,6 +842,9 @@ flowchart TD
 - `scapy` - Packet manipulation library
 - `dnspython` - DNS toolkit
 - `flask` - Web framework
+- `flask-wtf` - CSRF protection
+- `watchdog` - File system monitoring
+- `cryptography` - Security utilities
 
 **Optional**:
 - `tabulate` - Table formatting

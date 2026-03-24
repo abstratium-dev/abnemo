@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}Abnemo - Network Monitor{% endblock %}</title>
     <link rel="stylesheet" href="/styles.css">
     {% block extra_head %}{% endblock %}
@@ -531,12 +532,24 @@
             window.location.href = '/oauth/login';
         }
 
+        // CSRF token management - read from meta tag (industry standard)
+        function getCsrfToken() {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            return meta ? meta.getAttribute('content') : null;
+        }
+
         async function logout() {
             if (!authState.oauth_enabled) {
                 return;
             }
             try {
-                await fetch('/api/logout', { method: 'POST' });
+                const token = getCsrfToken();
+                await fetch('/api/logout', { 
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-Token': token
+                    }
+                });
             } catch (error) {
                 console.warn('Logout failed', error);
             }

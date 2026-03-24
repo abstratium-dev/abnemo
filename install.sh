@@ -130,6 +130,16 @@ prompt_with_default ABSTRAUTH_SESSION_TTL "ABSTRAUTH_SESSION_TTL" "900" false
 prompt_with_default ABSTRAUTH_REQUIRED_GROUPS "ABSTRAUTH_REQUIRED_GROUPS" "abstratium-abnemo_user" false
 
 echo ""
+echo -e "${GREEN}=== Security Configuration ===${NC}"
+echo -e "${YELLOW}Generating FLASK_SECRET_KEY for CSRF protection...${NC}"
+FLASK_SECRET_KEY=$(openssl rand -hex 32)
+echo -e "${GREEN}✓ Generated secure secret key${NC}"
+
+echo -e "${YELLOW}Generating ABNEMO_TOKEN_ENCRYPTION_KEY for OAuth token encryption...${NC}"
+ABNEMO_TOKEN_ENCRYPTION_KEY=$(python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')
+echo -e "${GREEN}✓ Generated secure encryption key${NC}"
+
+echo ""
 echo -e "${GREEN}=== SMTP Email Configuration ===${NC}"
 prompt_with_default ABNEMO_SMTP_HOST "ABNEMO_SMTP_HOST" "mail.maxant.ch" false
 prompt_with_default ABNEMO_SMTP_PORT "ABNEMO_SMTP_PORT" "587" false
@@ -144,6 +154,10 @@ echo -e "${GREEN}Step 7: Writing environment file...${NC}"
 cat > "$ENV_FILE" <<EOF
 # Abnemo Environment Configuration
 # Generated on $(date)
+
+# Security
+FLASK_SECRET_KEY=${FLASK_SECRET_KEY}
+ABNEMO_TOKEN_ENCRYPTION_KEY=${ABNEMO_TOKEN_ENCRYPTION_KEY}
 
 # OAuth/Authentication
 ABSTRAUTH_CLIENT_ID=${ABSTRAUTH_CLIENT_ID}

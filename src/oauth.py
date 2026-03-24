@@ -15,6 +15,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
+from flask_wtf.csrf import validate_csrf
+from flask import request
+from werkzeug.exceptions import BadRequest
+from cryptography.fernet import Fernet, InvalidToken
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +55,57 @@ def _parse_jwt_claims(token):
         return json.loads(decoded.decode('utf-8'))
     except Exception:
         return {}
+
+
+def _extract_jwt_expiry(token):
+    """Extract expiry timestamp from JWT token.
+    
+    Args:
+        token: JWT token string
+    
+    Returns:
+        datetime object representing token expiry, or None if not found
+    """
+    claims = _parse_jwt_claims(token)
+    exp = claims.get('exp')
+    if exp:
+        try:
+            return datetime.fromtimestamp(exp, tz=timezone.utc)
+        except (ValueError, OSError, TypeError):
+            return None
+    return None
+
+
+def _is_token_expired(tokens):
+    """Check if tokens are expired based on JWT exp claim or expires_at.
+    
+    Args:
+        tokens: Dictionary containing access_token and/or expires_at
+    
+    Returns:
+        True if tokens are expired, False otherwise
+    """
+    if not tokens:
+        return True
+    
+    # First check expires_at if present
+    expires_at_str = tokens.get('expires_at')
+    if expires_at_str:
+        try:
+            expires_at = datetime.fromisoformat(expires_at_str)
+            if expires_at < datetime.now(timezone.utc):
+                return True
+        except (ValueError, TypeError):
+            pass
+    
+    # Also check JWT exp claim from access_token
+    access_token = tokens.get('access_token')
+    if access_token:
+        jwt_expiry = _extract_jwt_expiry(access_token)
+        if jwt_expiry and jwt_expiry < datetime.now(timezone.utc):
+            return True
+    
+    return False
 
 
 def build_oauth_config():
@@ -118,12 +173,21 @@ def summarize_oauth_config(config):
 
 
 class MemorySessionStore:
-    """Simple in-memory session storage for BFF state."""
+    """Simple in-memory session storage for BFF state with encrypted token storage."""
 
     def __init__(self, ttl_seconds=3600):
         self.ttl_seconds = ttl_seconds
         self._sessions = {}
         self._lock = threading.Lock()
+        # Initialize Fernet encryption for token protection
+        # Key is generated at runtime and stored in memory only
+        encryption_key = os.getenv('ABNEMO_TOKEN_ENCRYPTION_KEY')
+        if encryption_key:
+            self._fernet = Fernet(encryption_key.encode())
+        else:
+            # Generate a new key if not provided (will be lost on restart)
+            self._fernet = Fernet(Fernet.generate_key())
+            logger.warning('No ABNEMO_TOKEN_ENCRYPTION_KEY set, using ephemeral key')
 
     def _now(self):
         return datetime.now(timezone.utc)
@@ -154,6 +218,17 @@ class MemorySessionStore:
             if self._is_expired(session):
                 del self._sessions[session_id]
                 return None
+            
+            # Check if tokens are expired
+            if session.get('authenticated'):
+                encrypted = session.get('_encrypted_tokens')
+                if encrypted:
+                    tokens = self._decrypt_tokens(encrypted)
+                    if _is_token_expired(tokens):
+                        logger.info('Session %s invalidated due to expired tokens', session_id[:8])
+                        del self._sessions[session_id]
+                        return None
+            
             session['_session_expires_at'] = self._now() + timedelta(seconds=self.ttl_seconds)
             return session
 
@@ -163,6 +238,80 @@ class MemorySessionStore:
             return
         with self._lock:
             self._sessions.pop(session_id, None)
+
+    def _encrypt_tokens(self, tokens):
+        """Encrypt token dictionary for secure storage.
+        
+        Args:
+            tokens: Dictionary containing access_token, refresh_token, etc.
+        
+        Returns:
+            Encrypted token string (base64 encoded)
+        """
+        if not tokens:
+            return None
+        try:
+            # Serialize tokens to JSON and encrypt
+            tokens_json = json.dumps(tokens)
+            encrypted = self._fernet.encrypt(tokens_json.encode('utf-8'))
+            return encrypted.decode('ascii')
+        except Exception as e:
+            logger.error('Failed to encrypt tokens: %s', e)
+            return None
+
+    def _decrypt_tokens(self, encrypted_tokens):
+        """Decrypt token string to recover original tokens.
+        
+        Args:
+            encrypted_tokens: Encrypted token string
+        
+        Returns:
+            Dictionary containing decrypted tokens or None if decryption fails
+        """
+        if not encrypted_tokens:
+            return None
+        try:
+            # Decrypt and deserialize tokens
+            decrypted = self._fernet.decrypt(encrypted_tokens.encode('ascii'))
+            tokens = json.loads(decrypted.decode('utf-8'))
+            return tokens
+        except (InvalidToken, json.JSONDecodeError) as e:
+            logger.error('Failed to decrypt tokens: %s', e)
+            return None
+
+    def store_tokens(self, session_id, tokens):
+        """Securely store tokens in session with encryption.
+        
+        Args:
+            session_id: Session identifier
+            tokens: Dictionary containing access_token, refresh_token, expires_at
+        """
+        if not session_id:
+            return
+        with self._lock:
+            session = self._sessions.get(session_id)
+            if session:
+                # Encrypt tokens before storing
+                encrypted = self._encrypt_tokens(tokens)
+                session['_encrypted_tokens'] = encrypted
+
+    def retrieve_tokens(self, session_id):
+        """Retrieve and decrypt tokens from session.
+        
+        Args:
+            session_id: Session identifier
+        
+        Returns:
+            Dictionary containing decrypted tokens or None
+        """
+        if not session_id:
+            return None
+        with self._lock:
+            session = self._sessions.get(session_id)
+            if not session:
+                return None
+            encrypted = session.get('_encrypted_tokens')
+            return self._decrypt_tokens(encrypted)
 
 
 def build_authorization_url(base_url, params):
@@ -336,11 +485,13 @@ def register_oauth_routes(app, oauth_config, session_store):
 
         session.pop('pkce', None)
         session['authenticated'] = True
-        session['tokens'] = {
+        # Store tokens encrypted in session store
+        token_data = {
             'access_token': tokens.get('access_token'),
             'refresh_token': tokens.get('refresh_token'),
             'expires_at': (datetime.now(timezone.utc) + timedelta(seconds=tokens.get('expires_in', 3600))).isoformat()
         }
+        session_store.store_tokens(g.session_id, token_data)
         session['user'] = extract_user(tokens)
 
         return redirect('/')
@@ -386,6 +537,22 @@ def register_oauth_routes(app, oauth_config, session_store):
     @app.route('/api/logout', methods=['POST'])
     def api_logout():
         """Clear authentication session."""
+        # Validate CSRF token
+        try:
+            csrf_token = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token')
+            if not csrf_token:
+                return jsonify({
+                    'error': 'CSRF token missing',
+                    'code': 'csrf_token_missing'
+                }), 403
+            validate_csrf(csrf_token)
+        except (BadRequest, Exception) as e:
+            return jsonify({
+                'error': 'CSRF token validation failed',
+                'code': 'csrf_error',
+                'reason': str(e)
+            }), 403
+
         if not oauth_config['enabled']:
             return jsonify({'success': True, 'oauth_enabled': False})
 

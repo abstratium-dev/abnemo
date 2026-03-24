@@ -11,6 +11,7 @@ import logging
 import subprocess
 from datetime import datetime, timedelta, timezone
 from flask import Flask, request, jsonify, send_from_directory, redirect, g, Response, render_template
+from flask_wtf.csrf import CSRFProtect, generate_csrf, CSRFError
 
 # Import modular components
 from src.oauth import (
@@ -339,6 +340,12 @@ def create_app(log_dir):
     template_folder = os.path.join(project_root, 'templates')
     app = Flask(__name__, static_folder=static_folder, template_folder=template_folder)
 
+    # Configure CSRF protection
+    app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', os.urandom(32).hex())
+    app.config['WTF_CSRF_CHECK_DEFAULT'] = False  # We'll manually check on state-changing endpoints
+    app.config['WTF_CSRF_TIME_LIMIT'] = None  # No time limit for CSRF tokens
+    csrf = CSRFProtect(app)
+
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
 
@@ -415,6 +422,15 @@ def create_app(log_dir):
                     path='/'
                 )
             return response
+
+    # CSRF error handler
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        return jsonify({
+            'error': 'CSRF token validation failed',
+            'code': 'csrf_error',
+            'reason': e.description
+        }), 403
 
     @app.route('/api/traffic')
     def api_traffic():

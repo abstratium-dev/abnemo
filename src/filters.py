@@ -15,6 +15,9 @@ from datetime import datetime, timezone
 from threading import Thread, Lock
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from flask_wtf.csrf import validate_csrf
+from flask import request
+from werkzeug.exceptions import BadRequest
 
 logger = logging.getLogger(__name__)
 
@@ -526,6 +529,22 @@ def start_traffic_analysis(log_file_path):
     thread.start()
 
 
+def _validate_csrf_token():
+    """Validate CSRF token from request headers or form data.
+    
+    Returns:
+        tuple: (success: bool, error_response: dict or None)
+    """
+    try:
+        csrf_token = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token')
+        if not csrf_token:
+            return False, ({'error': 'CSRF token missing', 'code': 'csrf_token_missing'}, 403)
+        validate_csrf(csrf_token)
+        return True, None
+    except (BadRequest, Exception) as e:
+        return False, ({'error': 'CSRF token validation failed', 'code': 'csrf_error', 'reason': str(e)}, 403)
+
+
 def register_filter_routes(app, auth_check_func):
     """Register filter management routes with the Flask app
     
@@ -566,6 +585,11 @@ def register_filter_routes(app, auth_check_func):
     @app.route('/api/accept-list-filters', methods=['POST'])
     def api_create_accept_list_filter():
         """Create a new accept-list filter"""
+        # Validate CSRF token
+        csrf_valid, csrf_error = _validate_csrf_token()
+        if not csrf_valid:
+            return jsonify(csrf_error[0]), csrf_error[1]
+        
         auth_error = auth_check_func()
         if auth_error:
             return auth_error
@@ -599,6 +623,11 @@ def register_filter_routes(app, auth_check_func):
     @app.route('/api/warnlist-filters', methods=['POST'])
     def api_create_warnlist_filter():
         """Create a new warn-list filter"""
+        # Validate CSRF token
+        csrf_valid, csrf_error = _validate_csrf_token()
+        if not csrf_valid:
+            return jsonify(csrf_error[0]), csrf_error[1]
+        
         auth_error = auth_check_func()
         if auth_error:
             return auth_error
@@ -632,6 +661,11 @@ def register_filter_routes(app, auth_check_func):
     @app.route('/api/accept-list-filters/<filter_id>', methods=['PUT'])
     def api_update_accept_list_filter(filter_id):
         """Update an existing accept-list filter"""
+        # Validate CSRF token
+        csrf_valid, csrf_error = _validate_csrf_token()
+        if not csrf_valid:
+            return jsonify(csrf_error[0]), csrf_error[1]
+        
         auth_error = auth_check_func()
         if auth_error:
             return auth_error
@@ -665,6 +699,11 @@ def register_filter_routes(app, auth_check_func):
     @app.route('/api/warnlist-filters/<filter_id>', methods=['PUT'])
     def api_update_warnlist_filter(filter_id):
         """Update an existing warn-list filter"""
+        # Validate CSRF token
+        csrf_valid, csrf_error = _validate_csrf_token()
+        if not csrf_valid:
+            return jsonify(csrf_error[0]), csrf_error[1]
+        
         auth_error = auth_check_func()
         if auth_error:
             return auth_error
@@ -698,6 +737,11 @@ def register_filter_routes(app, auth_check_func):
     @app.route('/api/accept-list-filters/<filter_id>', methods=['DELETE'])
     def api_delete_accept_list_filter(filter_id):
         """Delete an accept-list filter"""
+        # Validate CSRF token
+        csrf_valid, csrf_error = _validate_csrf_token()
+        if not csrf_valid:
+            return jsonify(csrf_error[0]), csrf_error[1]
+        
         auth_error = auth_check_func()
         if auth_error:
             return auth_error
@@ -715,6 +759,11 @@ def register_filter_routes(app, auth_check_func):
     @app.route('/api/warnlist-filters/<filter_id>', methods=['DELETE'])
     def api_delete_warnlist_filter(filter_id):
         """Delete a warn-list filter"""
+        # Validate CSRF token
+        csrf_valid, csrf_error = _validate_csrf_token()
+        if not csrf_valid:
+            return jsonify(csrf_error[0]), csrf_error[1]
+        
         auth_error = auth_check_func()
         if auth_error:
             return auth_error

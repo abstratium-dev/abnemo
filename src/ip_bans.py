@@ -8,6 +8,8 @@ import subprocess
 import logging
 import re
 from flask import request, jsonify
+from flask_wtf.csrf import validate_csrf
+from werkzeug.exceptions import BadRequest
 
 logger = logging.getLogger(__name__)
 
@@ -251,6 +253,15 @@ def register_ip_ban_routes(app, auth_check_func):
     @app.route('/api/ip-bans', methods=['POST'])
     def api_ban_ip():
         """Ban an IP address"""
+        # Validate CSRF token
+        try:
+            csrf_token = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token')
+            if not csrf_token:
+                return jsonify({'error': 'CSRF token missing', 'code': 'csrf_token_missing'}), 403
+            validate_csrf(csrf_token)
+        except (BadRequest, Exception) as e:
+            return jsonify({'error': 'CSRF token validation failed', 'code': 'csrf_error', 'reason': str(e)}), 403
+        
         auth_error = auth_check_func()
         if auth_error:
             return auth_error
@@ -282,6 +293,15 @@ def register_ip_ban_routes(app, auth_check_func):
     @app.route('/api/ip-bans/<ip_address>', methods=['DELETE'])
     def api_unban_ip(ip_address):
         """Unban an IP address"""
+        # Validate CSRF token
+        try:
+            csrf_token = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token')
+            if not csrf_token:
+                return jsonify({'error': 'CSRF token missing', 'code': 'csrf_token_missing'}), 403
+            validate_csrf(csrf_token)
+        except (BadRequest, Exception) as e:
+            return jsonify({'error': 'CSRF token validation failed', 'code': 'csrf_error', 'reason': str(e)}), 403
+        
         auth_error = auth_check_func()
         if auth_error:
             return auth_error

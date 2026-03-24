@@ -41,7 +41,7 @@ sudo apt install python3-bpfcc linux-headers-$(uname -r)
 **Production dependencies:**
 ```bash
 # System packages
-sudo apt install python3-scapy python3-dnspython python3-tabulate python3-flask
+sudo apt install python3-scapy python3-dnspython python3-tabulate python3-flask python3-flask-wtf python3-watchdog python3-cryptography
 ```
 
 **Development dependencies:**

@@ -4,6 +4,8 @@ Fail2ban Endpoints Module - API endpoints for fail2ban visualization
 """
 
 import logging
+from flask_wtf.csrf import validate_csrf
+from werkzeug.exceptions import BadRequest
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +77,15 @@ def register_fail2ban_routes(app, auth_check_func):
         POST body should contain:
             config: The fail2ban-client --dp output as text
         """
+        # Validate CSRF token
+        try:
+            csrf_token = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token')
+            if not csrf_token:
+                return jsonify({'error': 'CSRF token missing', 'code': 'csrf_token_missing'}), 403
+            validate_csrf(csrf_token)
+        except (BadRequest, Exception) as e:
+            return jsonify({'error': 'CSRF token validation failed', 'code': 'csrf_error', 'reason': str(e)}), 403
+        
         auth_error = auth_check_func()
         if auth_error:
             return auth_error
