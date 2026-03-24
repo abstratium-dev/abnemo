@@ -169,7 +169,7 @@
                     <span class="brand-name">{% block brand_name %}ABNEMO{% endblock %}</span>
                 </div>
                 <div class="header-right">
-                    <button class="theme-toggle-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode" aria-label="Toggle theme">
+                    <button class="theme-toggle-btn" id="theme-toggle" title="Toggle dark/light mode" aria-label="Toggle theme">
                         <span id="theme-icon">🌙</span>
                     </button>
                     <span>&nbsp;|&nbsp;</span>
@@ -183,7 +183,7 @@
                     <span>&nbsp;|&nbsp;</span>
                     <a href="/ip-bans" id="ip-bans-link">🚫 ip bans</a>
                     <span id="auth-separator" style="display: none;">&nbsp;|&nbsp;</span>
-                    <a href="#" id="auth-link" style="display: none;" onclick="handleAuthClick(event)"></a>
+                    <a href="#" id="auth-link" style="display: none;"></a>
                 </div>
             </div>
         </header>
@@ -194,7 +194,7 @@
         </div>
     </div>
 
-    <script>
+    <script nonce="{{ g.csp_nonce }}">
         // ===== THEME MANAGEMENT =====
         function initTheme() {
             const savedTheme = localStorage.getItem('abnemo-theme');
@@ -281,13 +281,13 @@
                     
                     if (!authState.authenticated) {
                         message = '<div><strong>⚠️ Authentication Required</strong><div class="auth-details">You must sign in to view this page.</div></div>';
-                        actions = '<div class="auth-actions"><button onclick="startLogin()" style="padding: 8px 16px; cursor: pointer;">Sign In</button></div>';
+                        actions = '<div class="auth-actions"><button data-action="login" style="padding: 8px 16px; cursor: pointer;">Sign In</button></div>';
                     } else if (!authState.has_access) {
                         const displayName = (authState.user && (authState.user.name || authState.user.email)) || 'User';
                         const requiredGroups = authState.required_groups || (authState.required_group ? [authState.required_group] : []);
                         const groupText = requiredGroups.length > 0 ? requiredGroups.join(', ') : 'required group';
                         message = `<div><strong>⚠️ Access Denied</strong><div class="auth-details">Signed in as ${displayName}, but you don't have access to this page. Required group: ${groupText}</div></div>`;
-                        actions = '<div class="auth-actions"><button onclick="logout()" style="padding: 8px 16px; cursor: pointer;">Sign Out</button></div>';
+                        actions = '<div class="auth-actions"><button data-action="logout" style="padding: 8px 16px; cursor: pointer;">Sign Out</button></div>';
                     }
                     
                     authMessage.innerHTML = message + actions;
@@ -366,7 +366,7 @@
             notification.innerHTML = `
                 <span style="font-weight: bold; margin-right: 8px;">${icon}</span>
                 <span>${escapedMessage}</span>
-                <button onclick="this.parentElement.remove()" style="
+                <button data-action="close-notification" style="
                     position: absolute;
                     top: 10px;
                     right: 10px;
@@ -382,7 +382,7 @@
                     text-align: center;
                     opacity: 0.7;
                     transition: opacity 0.2s;
-                " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">×</button>
+                ">×</button>
             `;
             
             // Add animation keyframes if not already added
@@ -399,6 +399,9 @@
                             transform: translateX(0);
                             opacity: 1;
                         }
+                    }
+                    [data-action="close-notification"]:hover {
+                        opacity: 1 !important;
                     }
                 `;
                 document.head.appendChild(style);
@@ -562,6 +565,36 @@
             initTheme();
             updateActiveNavLink();
             await fetchAuthStatus();
+            
+            // Bind event handlers (CSP-compliant, no inline onclick)
+            const themeToggle = document.getElementById('theme-toggle');
+            if (themeToggle) {
+                themeToggle.addEventListener('click', toggleTheme);
+            }
+            
+            const authLink = document.getElementById('auth-link');
+            if (authLink) {
+                authLink.addEventListener('click', handleAuthClick);
+            }
+            
+            // Event delegation for dynamically created buttons with data-action
+            document.body.addEventListener('click', (event) => {
+                const target = event.target.closest('[data-action]');
+                if (!target) return;
+                
+                const action = target.getAttribute('data-action');
+                switch(action) {
+                    case 'login':
+                        startLogin();
+                        break;
+                    case 'logout':
+                        logout();
+                        break;
+                    case 'close-notification':
+                        target.parentElement.remove();
+                        break;
+                }
+            });
         });
 
         {% block extra_scripts %}{% endblock %}

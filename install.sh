@@ -125,7 +125,8 @@ prompt_with_default ABSTRAUTH_CLIENT_SECRET "ABSTRAUTH_CLIENT_SECRET" "" true
 prompt_with_default ABSTRAUTH_AUTHORIZATION_ENDPOINT "ABSTRAUTH_AUTHORIZATION_ENDPOINT" "https://auth-t.abstratium.dev/oauth2/authorize" false
 prompt_with_default ABSTRAUTH_TOKEN_ENDPOINT "ABSTRAUTH_TOKEN_ENDPOINT" "https://auth-t.abstratium.dev/oauth2/token" false
 prompt_with_default ABSTRAUTH_REDIRECT_URI "ABSTRAUTH_REDIRECT_URI" "http://localhost:40002/oauth/callback" false
-prompt_with_default ABSTRAUTH_COOKIE_SECURE "ABSTRAUTH_COOKIE_SECURE" "true" false
+prompt_with_default FLASK_ENV "FLASK_ENV (production or development)" "production" false
+prompt_with_default ABSTRAUTH_COOKIE_SECURE "ABSTRAUTH_COOKIE_SECURE (auto, true, or false)" "auto" false
 prompt_with_default ABSTRAUTH_SESSION_TTL "ABSTRAUTH_SESSION_TTL" "900" false
 prompt_with_default ABSTRAUTH_REQUIRED_GROUPS "ABSTRAUTH_REQUIRED_GROUPS" "abstratium-abnemo_user" false
 
@@ -158,6 +159,9 @@ cat > "$ENV_FILE" <<EOF
 # Security
 FLASK_SECRET_KEY=${FLASK_SECRET_KEY}
 ABNEMO_TOKEN_ENCRYPTION_KEY=${ABNEMO_TOKEN_ENCRYPTION_KEY}
+
+# Flask Environment
+FLASK_ENV=${FLASK_ENV}
 
 # OAuth/Authentication
 ABSTRAUTH_CLIENT_ID=${ABSTRAUTH_CLIENT_ID}

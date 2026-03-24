@@ -114,6 +114,24 @@ def build_oauth_config():
     Returns:
         Dictionary with OAuth configuration
     """
+    # Determine if we're in production (HTTPS required)
+    is_production = os.getenv('FLASK_ENV', 'production') == 'production'
+    cookie_secure_env = os.getenv('ABSTRAUTH_COOKIE_SECURE', 'auto').lower()
+    
+    # Auto-detect: force Secure in production, allow override in dev
+    if cookie_secure_env == 'auto':
+        cookie_secure = is_production
+    else:
+        cookie_secure = cookie_secure_env in ('1', 'true', 'yes')
+    
+    # Use __Host- prefix for maximum security (requires Secure, Path=/, no Domain)
+    # Falls back to regular name if Secure cannot be enabled
+    base_cookie_name = os.getenv('ABSTRAUTH_SESSION_COOKIE', 'abnemo_session')
+    if cookie_secure and not base_cookie_name.startswith('__Host-'):
+        session_cookie_name = f'__Host-{base_cookie_name}'
+    else:
+        session_cookie_name = base_cookie_name
+    
     config = {
         'client_id': os.getenv('ABSTRAUTH_CLIENT_ID'),
         'client_secret': os.getenv('ABSTRAUTH_CLIENT_SECRET'),
@@ -121,9 +139,9 @@ def build_oauth_config():
         'token_endpoint': os.getenv('ABSTRAUTH_TOKEN_ENDPOINT'),
         'redirect_uri': os.getenv('ABSTRAUTH_REDIRECT_URI'),
         'scope': os.getenv('ABSTRAUTH_SCOPE', 'openid profile email'),
-        'session_cookie_name': os.getenv('ABSTRAUTH_SESSION_COOKIE', 'abnemo_session'),
-        'cookie_secure': os.getenv('ABSTRAUTH_COOKIE_SECURE', 'false').lower() in ('1', 'true', 'yes'),
-        'cookie_samesite': 'Lax',
+        'session_cookie_name': session_cookie_name,
+        'cookie_secure': cookie_secure,
+        'cookie_samesite': 'Lax',  # Lax required for OAuth callback redirects; still provides CSRF protection
         'session_ttl': int(os.getenv('ABSTRAUTH_SESSION_TTL', '3600')),
     }
     

@@ -116,15 +116,15 @@ textarea:focus {
 {% block content %}
 <div class="card">
     <div class="tabs">
-        <button class="tab active" onclick="switchTab('local')">Local Server</button>
-        <button class="tab" onclick="switchTab('custom')">Custom Config</button>
+        <button class="tab active" data-action="switch-tab" data-tab="local">Local Server</button>
+        <button class="tab" data-action="switch-tab" data-tab="custom">Custom Config</button>
     </div>
     
     <div id="error-container"></div>
     
     <div id="local-tab" class="tab-content active">
         <div class="controls">
-            <button onclick="loadLocalConfig()">🔄 Load Local fail2ban Config</button>
+            <button data-action="load-local-config">🔄 Load Local fail2ban Config</button>
         </div>
     </div>
     
@@ -134,7 +134,7 @@ textarea:focus {
                 Paste the output from: <code>sudo fail2ban-client --dp</code>
             </p>
             <textarea id="custom-config" placeholder="[['add', 'sshd', 'auto'], ['set', 'sshd', 'maxretry', 5], ...]"></textarea>
-            <button onclick="visualizeCustomConfig()">📊 Visualize Custom Config</button>
+            <button data-action="visualize-custom">📊 Visualize Custom Config</button>
         </div>
     </div>
     
@@ -280,4 +280,25 @@ async function checkLocalAvailability() {
 }
 
 window.addEventListener('DOMContentLoaded', checkLocalAvailability);
+
+// Event delegation for data-action buttons (CSP-compliant)
+document.body.addEventListener('click', (event) => {
+    const target = event.target.closest('[data-action]');
+    if (!target) return;
+    
+    const action = target.getAttribute('data-action');
+    const tab = target.getAttribute('data-tab');
+    
+    switch(action) {
+        case 'switch-tab':
+            switchTab(tab);
+            break;
+        case 'load-local-config':
+            loadLocalConfig();
+            break;
+        case 'visualize-custom':
+            visualizeCustomConfig();
+            break;
+    }
+});
 {% endblock %}

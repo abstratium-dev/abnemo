@@ -352,8 +352,6 @@ def create_app(log_dir):
     oauth_config = build_oauth_config()
     session_store = MemorySessionStore(oauth_config['session_ttl']) if oauth_config['enabled'] else None
     oauth_summary = summarize_oauth_config(oauth_config)
-    if oauth_summary['cookie_samesite'] == 'Strict':
-        logger.warning('ABSTRAUTH_COOKIE_SAMESITE is set to Strict; OAuth redirects from another domain may not carry the session cookie. Consider Lax for Authorization Code flow.')
     logger.info('OAuth configuration summary: %s', oauth_summary)
     if oauth_config['enabled']:
         logger.info('OAuth enforcement ENABLED - sign-in required for web endpoints.')
@@ -422,6 +420,63 @@ def create_app(log_dir):
                     path='/'
                 )
             return response
+
+    # Generate CSP nonce for each request
+    @app.before_request
+    def generate_csp_nonce():
+        """Generate a unique nonce for Content-Security-Policy on each request."""
+        import secrets
+        g.csp_nonce = secrets.token_urlsafe(16)
+    
+    # Security headers middleware (OWASP best practices)
+    @app.after_request
+    def add_security_headers(response):
+        """Add security headers to all responses for defense-in-depth protection.
+        
+        Implements OWASP recommendations:
+        - Content-Security-Policy: Prevents XSS attacks
+        - X-Frame-Options: Prevents clickjacking
+        - X-Content-Type-Options: Prevents MIME sniffing
+        - Strict-Transport-Security: Enforces HTTPS
+        - Referrer-Policy: Controls referrer information
+        - Permissions-Policy: Restricts browser features
+        """
+        # Content Security Policy - prevents XSS and injection attacks
+        # Use nonce for inline scripts, event delegation for handlers
+        nonce = getattr(g, 'csp_nonce', '')
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            f"script-src 'self' 'nonce-{nonce}' https://cdn.jsdelivr.net; "  # Nonce for inline scripts, no unsafe-inline!
+            "style-src 'self' 'unsafe-inline'; "   # unsafe-inline needed for inline styles (consider nonce in future)
+            "img-src 'self' data:; "
+            "font-src 'self'; "
+            "connect-src 'self' https://cdn.jsdelivr.net; "  # Allow CDN for source maps
+            "frame-ancestors 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'"
+        )
+        
+        # Prevent clickjacking attacks
+        response.headers['X-Frame-Options'] = 'DENY'
+        
+        # Prevent MIME type sniffing
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        
+        # Enforce HTTPS (only if cookie_secure is enabled)
+        if oauth_config.get('cookie_secure', False):
+            response.headers['Strict-Transport-Security'] = (
+                'max-age=31536000; includeSubDomains; preload'
+            )
+        
+        # Control referrer information leakage
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        
+        # Restrict browser features
+        response.headers['Permissions-Policy'] = (
+            'geolocation=(), microphone=(), camera=(), payment=()'
+        )
+        
+        return response
 
     # CSRF error handler
     @app.errorhandler(CSRFError)

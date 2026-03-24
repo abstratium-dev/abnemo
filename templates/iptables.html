@@ -82,7 +82,7 @@
     <div id="error-container"></div>
     
     <div class="controls">
-        <button onclick="loadLocalRules()">🔄 Reload iptables Rules</button>
+        <button data-action="load-rules">🔄 Reload iptables Rules</button>
     </div>
     
     <div id="text-container" class="hidden"></div>
@@ -170,5 +170,16 @@ async function loadLocalRules() {
 // Auto-load iptables rules when page loads
 window.addEventListener('DOMContentLoaded', () => {
     loadLocalRules();
+});
+
+// Event delegation for data-action buttons (CSP-compliant)
+document.body.addEventListener('click', (event) => {
+    const target = event.target.closest('[data-action]');
+    if (!target) return;
+    
+    const action = target.getAttribute('data-action');
+    if (action === 'load-rules') {
+        loadLocalRules();
+    }
 });
 {% endblock %}

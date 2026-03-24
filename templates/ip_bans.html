@@ -211,7 +211,7 @@ tr:hover {
 
     <div class="controls">
         <h2 style="margin-bottom: 20px; color: var(--color-text-primary);">🚫 Ban IP Address</h2>
-        <form class="ban-form" onsubmit="banIP(event)">
+        <form class="ban-form" id="ban-form">
             <div class="input-group">
                 <label for="ip-input">IP Address</label>
                 <input type="text" id="ip-input" placeholder="e.g., 192.168.1.100" required pattern="^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$">
@@ -327,7 +327,7 @@ function displayBannedIPs(bannedIPs) {
                 <td><code class="ip-code">${escapeHtml(item.ip)}</code></td>
                 <td>${escapeHtml(ruleDetails)}</td>
                 <td>
-                    <button class="action-btn" onclick="unbanIP('${escapeHtml(item.ip)}', this)" title="Unban this IP address">
+                    <button class="action-btn" data-action="unban-ip" data-ip="${escapeHtml(item.ip)}" title="Unban this IP address">
                         🗑️
                     </button>
                 </td>
@@ -463,4 +463,23 @@ window.addEventListener('DOMContentLoaded', async () => {
     await fetchAuthStatus();
     loadBannedIPs();
 });
+
+// Event delegation for data-action buttons (CSP-compliant)
+document.body.addEventListener('click', (event) => {
+    const target = event.target.closest('[data-action]');
+    if (!target) return;
+    
+    const action = target.getAttribute('data-action');
+    const ip = target.getAttribute('data-ip');
+    
+    if (action === 'unban-ip') {
+        unbanIP(ip, target);
+    }
+});
+
+// Form submit handler (CSP-compliant)
+const banForm = document.getElementById('ban-form');
+if (banForm) {
+    banForm.addEventListener('submit', banIP);
+}
 {% endblock %}

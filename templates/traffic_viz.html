@@ -219,16 +219,16 @@ tr:hover {
                 <label for="end-time">End Time (Exclusive)</label>
                 <input type="datetime-local" id="end-time" step="1">
             </div>
-            <button onclick="loadData()">Load Data</button>
+            <button data-action="load-data">Load Data</button>
         </div>
         
         <div class="quick-ranges">
-            <button class="quick-btn" onclick="setRange(5)">Last 5 min</button>
-            <button class="quick-btn" onclick="setRange(15)">Last 15 min</button>
-            <button class="quick-btn" onclick="setRange(30)">Last 30 min</button>
-            <button class="quick-btn" onclick="setRange(60)">Last 1 hour</button>
-            <button class="quick-btn" onclick="setRange(360)">Last 6 hours</button>
-            <button class="quick-btn" onclick="setRange(1440)">Last 24 hours</button>
+            <button class="quick-btn" data-action="set-range" data-minutes="5">Last 5 min</button>
+            <button class="quick-btn" data-action="set-range" data-minutes="15">Last 15 min</button>
+            <button class="quick-btn" data-action="set-range" data-minutes="30">Last 30 min</button>
+            <button class="quick-btn" data-action="set-range" data-minutes="60">Last 1 hour</button>
+            <button class="quick-btn" data-action="set-range" data-minutes="360">Last 6 hours</button>
+            <button class="quick-btn" data-action="set-range" data-minutes="1440">Last 24 hours</button>
         </div>
     </div>
     
@@ -616,6 +616,24 @@ window.addEventListener('DOMContentLoaded', async () => {
         const begin = new Date(end.getTime() - 60 * 60000);
         document.getElementById('begin-time').value = formatDateTimeLocal(begin);
         document.getElementById('end-time').value = formatDateTimeLocal(end);
+    }
+});
+
+// Event delegation for data-action buttons (CSP-compliant)
+document.body.addEventListener('click', (event) => {
+    const target = event.target.closest('[data-action]');
+    if (!target) return;
+    
+    const action = target.getAttribute('data-action');
+    const minutes = target.getAttribute('data-minutes');
+    
+    switch(action) {
+        case 'load-data':
+            loadData();
+            break;
+        case 'set-range':
+            setRange(parseInt(minutes));
+            break;
     }
 });
 {% endblock %}

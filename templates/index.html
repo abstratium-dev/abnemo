@@ -530,16 +530,16 @@ tr.filter-hidden {
                 <label for="end-time">End Time (Exclusive)</label>
                 <input type="datetime-local" id="end-time" step="1">
             </div>
-            <button onclick="loadData()">Load Data</button>
+            <button data-action="load-data">Load Data</button>
         </div>
         
         <div class="quick-ranges">
-            <button class="quick-btn" onclick="setRange(5)">Last 5 min</button>
-            <button class="quick-btn" onclick="setRange(15)">Last 15 min</button>
-            <button class="quick-btn" onclick="setRange(30)">Last 30 min</button>
-            <button class="quick-btn" onclick="setRange(60)">Last 1 hour</button>
-            <button class="quick-btn" onclick="setRange(360)">Last 6 hours</button>
-            <button class="quick-btn" onclick="setRange(1440)">Last 24 hours</button>
+            <button class="quick-btn" data-action="set-range" data-minutes="5">Last 5 min</button>
+            <button class="quick-btn" data-action="set-range" data-minutes="15">Last 15 min</button>
+            <button class="quick-btn" data-action="set-range" data-minutes="30">Last 30 min</button>
+            <button class="quick-btn" data-action="set-range" data-minutes="60">Last 1 hour</button>
+            <button class="quick-btn" data-action="set-range" data-minutes="360">Last 6 hours</button>
+            <button class="quick-btn" data-action="set-range" data-minutes="1440">Last 24 hours</button>
         </div>
     </div>
     
@@ -547,18 +547,18 @@ tr.filter-hidden {
     
     <!-- Accept-List Filter Management Section -->
     <div class="filter-section">
-        <div class="filter-header" onclick="toggleFilterSection()">
+        <div class="filter-header" data-action="toggle-filter-section">
             <h3>✅ Accept-List Filters (Hide Matching)</h3>
             <span class="filter-toggle-icon" id="filter-toggle-icon">▼</span>
         </div>
         <div class="filter-content" id="filter-content">
             <div class="filter-controls">
                 <label class="toggle-switch">
-                    <input type="checkbox" id="accept-list-enabled" onchange="toggleAcceptListEnabled()" checked>
+                    <input type="checkbox" id="accept-list-enabled" data-action="toggle-accept-list" checked>
                     <span class="toggle-slider"></span>
                 </label>
                 <span>Enable Accept-List (Hide Matching Traffic)</span>
-                <button onclick="showAddFilterForm()" style="margin-left: auto;">+ Add Filter</button>
+                <button data-action="show-add-filter" style="margin-left: auto;">+ Add Filter</button>
             </div>
             
             <div id="add-filter-form" class="filter-form" style="display: none;">
@@ -566,8 +566,8 @@ tr.filter-hidden {
                 <input type="text" id="new-filter-pattern" placeholder="Pattern (e.g., ^192\.168\..* to hide local IPs)" />
                 <textarea id="new-filter-description" placeholder="Description (e.g., 'Hide local network traffic')"></textarea>
                 <div class="filter-form-actions">
-                    <button onclick="saveNewFilter()">Save</button>
-                    <button class="quick-btn" onclick="cancelAddFilter()">Cancel</button>
+                    <button data-action="save-new-filter">Save</button>
+                    <button class="quick-btn" data-action="cancel-add-filter">Cancel</button>
                 </div>
             </div>
             
@@ -581,13 +581,13 @@ tr.filter-hidden {
     
     <!-- Warn-list Filter Management Section -->
     <div class="filter-section">
-        <div class="filter-header" onclick="toggleWarnlistSection()">
+        <div class="filter-header" data-action="toggle-warnlist-section">
             <h3>⚠️ Warn-list Filters (Highlight Matching)</h3>
             <span class="filter-toggle-icon" id="warnlist-toggle-icon">▼</span>
         </div>
         <div class="filter-content" id="warnlist-content">
             <div class="filter-controls">
-                <button onclick="showAddWarnlistForm()">+ Add Warn-list Filter</button>
+                <button data-action="show-add-warnlist">+ Add Warn-list Filter</button>
             </div>
             
             <div id="add-warnlist-form" class="filter-form" style="display: none;">
@@ -595,8 +595,8 @@ tr.filter-hidden {
                 <input type="text" id="new-warnlist-pattern" placeholder="Pattern (e.g., malicious-domain\.com)" />
                 <textarea id="new-warnlist-description" placeholder="Description (e.g., 'Known malicious domain')"></textarea>
                 <div class="filter-form-actions">
-                    <button onclick="saveNewWarnlist()">Save</button>
-                    <button class="quick-btn" onclick="cancelAddWarnlist()">Cancel</button>
+                    <button data-action="save-new-warnlist">Save</button>
+                    <button class="quick-btn" data-action="cancel-add-warnlist">Cancel</button>
                 </div>
             </div>
             
@@ -643,9 +643,9 @@ tr.filter-hidden {
 </div>
 
 <!-- Process Details Modal -->
-<div id="process-modal" class="modal-overlay" onclick="if(event.target === this) closeModal()">
+<div id="process-modal" class="modal-overlay" data-action="close-modal-overlay">
     <div class="modal-content">
-        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <button class="modal-close" data-action="close-modal">&times;</button>
         <div id="process-details"></div>
     </div>
 </div>
@@ -1029,7 +1029,7 @@ function getContainerLabel(container) {
 }
 
 function renderProcessEntry(proc) {
-    const label = `<span class="process-link" onclick="showProcessDetails('${proc.pid}')">${proc.name || 'unknown'} (${proc.pid})</span>`;
+    const label = `<span class="process-link" data-action="show-process" data-pid="${proc.pid}">${proc.name || 'unknown'} (${proc.pid})</span>`;
     const containerLabel = getContainerLabel(proc.container);
     if (containerLabel) {
         return `${label}<span class="process-container" title="Docker container">${containerLabel}</span>`;
@@ -1109,9 +1109,9 @@ function renderFilterList() {
                 <div class="filter-item-header">
                     <div class="filter-item-pattern" id="pattern-display-${filter.id}">${escapeHtml(filter.pattern)}</div>
                     <div class="filter-item-actions">
-                        <button onclick="viewFilterHits('${encodedPattern}', '${encodedDescription}')">📊 View Hits</button>
-                        <button onclick="editFilter('${filter.id}')">Edit</button>
-                        <button onclick="deleteFilter('${filter.id}')" class="quick-btn">Delete</button>
+                        <button data-action="view-filter-hits" data-pattern="${encodedPattern}" data-description="${encodedDescription}">📊 View Hits</button>
+                        <button data-action="edit-filter" data-id="${filter.id}">Edit</button>
+                        <button data-action="delete-filter" data-id="${filter.id}" class="quick-btn">Delete</button>
                     </div>
                 </div>
                 ${filter.description ? `<div class="filter-item-description" id="description-display-${filter.id}">${escapeHtml(filter.description)}</div>` : `<div class="filter-item-description" id="description-display-${filter.id}" style="display:none;"></div>`}
@@ -1119,8 +1119,8 @@ function renderFilterList() {
                     <input type="text" id="edit-pattern-${filter.id}" value="${escapeHtml(filter.pattern)}" placeholder="Pattern" />
                     <textarea id="edit-description-${filter.id}" placeholder="Description (optional)">${escapeHtml(filter.description || '')}</textarea>
                     <div class="filter-item-edit-actions">
-                        <button onclick="saveFilterEdit('${filter.id}')">Save</button>
-                        <button class="quick-btn" onclick="cancelFilterEdit('${filter.id}')">Cancel</button>
+                        <button data-action="save-filter-edit" data-id="${filter.id}">Save</button>
+                        <button class="quick-btn" data-action="cancel-filter-edit" data-id="${filter.id}">Cancel</button>
                     </div>
                 </div>
                 <div class="filter-item-meta">
@@ -1557,9 +1557,9 @@ function renderWarnlistList() {
                 <div class="filter-item-header">
                     <div class="filter-item-pattern" id="warnlist-pattern-display-${filter.id}">${escapeHtml(filter.pattern)}</div>
                     <div class="filter-item-actions">
-                        <button onclick="viewFilterHits('${encodedPattern}', '${encodedDescription}')">📊 View Hits</button>
-                        <button onclick="editWarnlist('${filter.id}')">Edit</button>
-                        <button onclick="deleteWarnlist('${filter.id}')" class="quick-btn">Delete</button>
+                        <button data-action="view-filter-hits" data-pattern="${encodedPattern}" data-description="${encodedDescription}">📊 View Hits</button>
+                        <button data-action="edit-warnlist" data-id="${filter.id}">Edit</button>
+                        <button data-action="delete-warnlist" data-id="${filter.id}" class="quick-btn">Delete</button>
                     </div>
                 </div>
                 ${filter.description ? `<div class="filter-item-description" id="warnlist-description-display-${filter.id}">${escapeHtml(filter.description)}</div>` : `<div class="filter-item-description" id="warnlist-description-display-${filter.id}" style="display:none;"></div>`}
@@ -1567,8 +1567,8 @@ function renderWarnlistList() {
                     <input type="text" id="warnlist-edit-pattern-${filter.id}" value="${escapeHtml(filter.pattern)}" placeholder="Pattern" />
                     <textarea id="warnlist-edit-description-${filter.id}" placeholder="Description (optional)">${escapeHtml(filter.description || '')}</textarea>
                     <div class="filter-item-edit-actions">
-                        <button onclick="saveWarnlistEdit('${filter.id}')">Save</button>
-                        <button class="quick-btn" onclick="cancelWarnlistEdit('${filter.id}')">Cancel</button>
+                        <button data-action="save-warnlist-edit" data-id="${filter.id}">Save</button>
+                        <button class="quick-btn" data-action="cancel-warnlist-edit" data-id="${filter.id}">Cancel</button>
                     </div>
                 </div>
                 <div class="filter-item-meta">
@@ -1790,6 +1790,11 @@ function applyWarnlistToCurrentData() {
     let matchCount = 0;
     
     rows.forEach(row => {
+        // Skip rows hidden by accept-list (accept-list overrides warn-list)
+        if (row.classList.contains('filter-hidden')) {
+            return;
+        }
+        
         const ipCell = row.querySelector('td:nth-child(2) code');
         if (!ipCell) return;
         
@@ -1869,6 +1874,98 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
     } else {
         setRange(5);
+    }
+});
+
+// Event delegation for all data-action buttons (CSP-compliant)
+document.body.addEventListener('click', (event) => {
+    const target = event.target.closest('[data-action]');
+    if (!target) return;
+    
+    const action = target.getAttribute('data-action');
+    const id = target.getAttribute('data-id');
+    const minutes = target.getAttribute('data-minutes');
+    const pattern = target.getAttribute('data-pattern');
+    const description = target.getAttribute('data-description');
+    const pid = target.getAttribute('data-pid');
+    
+    switch(action) {
+        case 'load-data':
+            loadData();
+            break;
+        case 'set-range':
+            setRange(parseInt(minutes));
+            break;
+        case 'toggle-filter-section':
+            toggleFilterSection();
+            break;
+        case 'toggle-warnlist-section':
+            toggleWarnlistSection();
+            break;
+        case 'show-add-filter':
+            showAddFilterForm();
+            break;
+        case 'save-new-filter':
+            saveNewFilter();
+            break;
+        case 'cancel-add-filter':
+            cancelAddFilter();
+            break;
+        case 'show-add-warnlist':
+            showAddWarnlistForm();
+            break;
+        case 'save-new-warnlist':
+            saveNewWarnlist();
+            break;
+        case 'cancel-add-warnlist':
+            cancelAddWarnlist();
+            break;
+        case 'close-modal':
+        case 'close-modal-overlay':
+            if (action === 'close-modal-overlay' && event.target !== target) return;
+            closeModal();
+            break;
+        case 'show-process':
+            showProcessDetails(pid);
+            break;
+        case 'view-filter-hits':
+            viewFilterHits(decodeURIComponent(pattern), decodeURIComponent(description));
+            break;
+        case 'edit-filter':
+            editFilter(id);
+            break;
+        case 'delete-filter':
+            deleteFilter(id);
+            break;
+        case 'save-filter-edit':
+            saveFilterEdit(id);
+            break;
+        case 'cancel-filter-edit':
+            cancelFilterEdit(id);
+            break;
+        case 'edit-warnlist':
+            editWarnlist(id);
+            break;
+        case 'delete-warnlist':
+            deleteWarnlist(id);
+            break;
+        case 'save-warnlist-edit':
+            saveWarnlistEdit(id);
+            break;
+        case 'cancel-warnlist-edit':
+            cancelWarnlistEdit(id);
+            break;
+    }
+});
+
+// Event delegation for checkbox change events
+document.body.addEventListener('change', (event) => {
+    const target = event.target.closest('[data-action]');
+    if (!target) return;
+    
+    const action = target.getAttribute('data-action');
+    if (action === 'toggle-accept-list') {
+        toggleAcceptListEnabled();
     }
 });
 {% endblock %}

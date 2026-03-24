@@ -316,12 +316,12 @@ Set these before starting `./scripts/abnemo.sh monitor --web`. Authentication ga
 | `ABSTRAUTH_TOKEN_ENDPOINT` | ✅ | Full URL to the `/oauth2/token` endpoint |
 | `ABSTRAUTH_REDIRECT_URI` | ✅ | Callback handled by Abnemo (e.g., `https://monitor.example.com/oauth/callback`) |
 | `ABSTRAUTH_SCOPE` | ⛔ (defaults to `openid profile email`) | Space-delimited scopes requested during login |
-| `ABSTRAUTH_SESSION_COOKIE` | ⛔ (`abnemo_session`) | Name of the HTTP-only session cookie |
-| `ABSTRAUTH_COOKIE_SECURE` | ⛔ (`false`) | Set to `true` in production to force HTTPS-only cookies |
-| `ABSTRAUTH_COOKIE_SAMESITE` | _Not configurable_ (`Lax`) | Fixed to `Lax` to ensure `/oauth/callback` receives the session cookie |
+| `ABSTRAUTH_SESSION_COOKIE` | ⛔ (`abnemo_session`) | Name of the HTTP-only session cookie (auto-prefixed with `__Host-` in production) |
+| `ABSTRAUTH_COOKIE_SECURE` | ⛔ (`auto`) | Cookie security: `auto` (default, enables in production), `true`, or `false` |
 | `ABSTRAUTH_SESSION_TTL` | ⛔ (`3600`) | Session lifetime in seconds |
 | `ABSTRAUTH_REQUIRED_GROUP` | ⛔ | Name of a single Abstrauth group required to view monitoring data |
 | `ABSTRAUTH_REQUIRED_GROUPS` | ⛔ | Comma-separated list of acceptable groups; user must belong to at least one |
+| `FLASK_ENV` | ⛔ (`production`) | Flask environment: `production` or `development` (affects cookie security) |
 
 > ⚠️ The redirect URI **must exactly match** what is registered on the Abstrauth client, including scheme/host/port/path.
 
@@ -338,7 +338,8 @@ export ABSTRAUTH_AUTHORIZATION_ENDPOINT="https://auth.example.com/oauth2/authori
 export ABSTRAUTH_TOKEN_ENDPOINT="https://auth.example.com/oauth2/token"
 export ABSTRAUTH_REDIRECT_URI="https://monitor.example.com/oauth/callback"
 export ABSTRAUTH_REQUIRED_GROUPS="abnemo_admins"
-export ABSTRAUTH_COOKIE_SECURE=true   # strongly recommended when using HTTPS
+export FLASK_ENV=production           # enables secure cookies automatically
+export ABSTRAUTH_COOKIE_SECURE=auto   # auto-detects based on FLASK_ENV (recommended)
 ```
 
 Then launch:
