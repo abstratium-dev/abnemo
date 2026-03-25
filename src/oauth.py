@@ -841,17 +841,19 @@ def user_has_required_group(session, required_groups):
     return any(group in groups for group in required_groups)
 
 
-def register_oauth_routes(app, oauth_config, session_store):
+def register_oauth_routes(app, oauth_config, session_store, limiter):
     """Register OAuth routes with the Flask app
     
     Args:
         app: Flask application instance
         oauth_config: OAuth configuration dictionary
         session_store: MemorySessionStore instance
+        limiter: Flask-Limiter instance for rate limiting
     """
     from flask import request, jsonify, redirect, g
     
     @app.route('/oauth/login')
+    @limiter.limit("10 per minute")  # Prevent DoS attacks on OAuth flow
     def oauth_login():
         """Initiate OAuth login flow"""
         if not oauth_config['enabled']:
@@ -895,6 +897,7 @@ def register_oauth_routes(app, oauth_config, session_store):
         return redirect(auth_url)
 
     @app.route('/oauth/callback')
+    @limiter.limit("20 per minute")  # Prevent brute force on callback endpoint
     def oauth_callback():
         """Handle OAuth callback"""
         if not oauth_config['enabled']:
@@ -1005,6 +1008,7 @@ def register_oauth_routes(app, oauth_config, session_store):
         })
 
     @app.route('/api/logout', methods=['POST'])
+    @limiter.limit("30 per minute")  # Prevent logout abuse/DoS
     def api_logout():
         """Clear authentication session."""
         # Validate CSRF token

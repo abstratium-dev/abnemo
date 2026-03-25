@@ -56,6 +56,7 @@ RUN apt-get update && apt-get install -y \
     python3-cryptography \
     python3-jwt \
     python3-debugpy \
+    python3-flask-limiter \
     # eBPF/BCC dependencies
     python3-bpfcc \
     bpfcc-tools \

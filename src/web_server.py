@@ -12,6 +12,8 @@ import subprocess
 from datetime import datetime, timedelta, timezone
 from flask import Flask, request, jsonify, send_from_directory, redirect, g, Response, render_template
 from flask_wtf.csrf import CSRFProtect, generate_csrf, CSRFError
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 # Import modular components
 from src.oauth import (
@@ -345,6 +347,16 @@ def create_app(log_dir):
     app.config['WTF_CSRF_CHECK_DEFAULT'] = False  # We'll manually check on state-changing endpoints
     app.config['WTF_CSRF_TIME_LIMIT'] = None  # No time limit for CSRF tokens
     csrf = CSRFProtect(app)
+
+    # Configure rate limiting (OWASP recommendation for authentication endpoints)
+    # Using memory storage for simplicity; production should use Redis/Memcached
+    limiter = Limiter(
+        get_remote_address,
+        app=app,
+        default_limits=[],  # No default limits; we'll apply per-route
+        storage_uri="memory://",
+        strategy="fixed-window"
+    )
 
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
@@ -685,7 +697,7 @@ def create_app(log_dir):
             return jsonify({'error': str(e)}), 500
     
     # Register OAuth routes (includes /api/user, /api/logout, /api/oauth/status, /oauth/login, /oauth/callback)
-    register_oauth_routes(app, oauth_config, session_store)
+    register_oauth_routes(app, oauth_config, session_store, limiter)
 
     # Register modular routes
     register_iptables_routes(app, _ensure_authenticated_response)

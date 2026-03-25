@@ -84,6 +84,7 @@ The SBOM provides full transparency of all dependencies, their versions, and kno
 - tabulate >= 0.9.0
 - flask >= 2.3.0
 - flask-wtf >= 1.1.0
+- flask-limiter >= 3.5.0
 - watchdog >= 3.0.0
 - cryptography >= 41.0.0
 

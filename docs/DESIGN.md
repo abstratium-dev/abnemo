@@ -843,12 +843,11 @@ flowchart TD
 - `dnspython` - DNS toolkit
 - `flask` - Web framework
 - `flask-wtf` - CSRF protection
+- `flask-limiter` - Rate limiting
 - `watchdog` - File system monitoring
 - `cryptography` - Security utilities
-
-**Optional**:
 - `tabulate` - Table formatting
-- `docker` - Docker API client
+- `debugpy` - Remote debugging
 
 ---
 

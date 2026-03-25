@@ -82,6 +82,8 @@ apt-get install -y \
     python3-bpfcc \
     python3-bcc \
     python3-jwt \
+    python3-debugpy \
+    python3-flask-limiter \
     clang \
     llvm \
     libelf-dev \
