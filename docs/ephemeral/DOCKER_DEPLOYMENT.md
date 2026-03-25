@@ -55,6 +55,7 @@ RUN apt-get update && apt-get install -y \
     python3-watchdog \
     python3-cryptography \
     python3-jwt \
+    python3-debugpy \
     # eBPF/BCC dependencies
     python3-bpfcc \
     bpfcc-tools \

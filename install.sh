@@ -142,6 +142,10 @@ echo -e "${YELLOW}Generating ABNEMO_TOKEN_ENCRYPTION_KEY for OAuth token encrypt
 ABNEMO_TOKEN_ENCRYPTION_KEY=$(python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')
 echo -e "${GREEN}✓ Generated secure encryption key${NC}"
 
+echo -e "${YELLOW}Generating ABNEMO_STATE_SECRET for OAuth state parameter signing...${NC}"
+ABNEMO_STATE_SECRET=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
+echo -e "${GREEN}✓ Generated secure state secret${NC}"
+
 echo ""
 echo -e "${GREEN}=== SMTP Email Configuration ===${NC}"
 prompt_with_default ABNEMO_SMTP_HOST "ABNEMO_SMTP_HOST" "mail.maxant.ch" false
@@ -161,6 +165,7 @@ cat > "$ENV_FILE" <<EOF
 # Security
 FLASK_SECRET_KEY=${FLASK_SECRET_KEY}
 ABNEMO_TOKEN_ENCRYPTION_KEY=${ABNEMO_TOKEN_ENCRYPTION_KEY}
+ABNEMO_STATE_SECRET=${ABNEMO_STATE_SECRET}
 
 # Flask Environment
 FLASK_ENV=${FLASK_ENV}

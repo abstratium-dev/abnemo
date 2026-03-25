@@ -91,10 +91,10 @@ Next, install dependencies:
 # 1. Install dependencies
 # System packages (recommended if using system Python)
 # Ubuntu/Debian
-sudo apt install python3-scapy python3-dnspython python3-tabulate python3-bpfcc python3-flask python3-flaskext.wtf python3-watchdog python3-cryptography python3-jwt
+sudo apt install python3-scapy python3-dnspython python3-tabulate python3-bpfcc python3-flask python3-flaskext.wtf python3-watchdog python3-cryptography python3-jwt python3-debugpy
 
 # Fedora/RHEL
-sudo dnf install python3-scapy python3-dns python3-tabulate python3-bcc python3-flask python3-flask-wtf python3-watchdog python3-cryptography python3-jwt
+sudo dnf install python3-scapy python3-dns python3-tabulate python3-bcc python3-flask python3-flask-wtf python3-watchdog python3-cryptography python3-jwt python3-debugpy
 
 # 2. Build eBPF program
 sudo ./scripts/build_ebpf.sh 
@@ -124,6 +124,10 @@ Development mode with web server:
 ```bash
 sudo ./scripts/abnemo.sh monitor --summary-interval 10 --top 9999 --web --web-port 40002 --log-level DEBUG
 ```
+
+### Debugging
+
+To attach a Python debugger, use the `--debug-process` parameter with a port number (e.g., `sudo ./scripts/abnemo.sh --debug-process 5678 monitor`).
 
 Capture outgoing network traffic as a command line interface:
 
@@ -323,6 +327,8 @@ Set these before starting `./scripts/abnemo.sh monitor --web`. Authentication ga
 | `ABSTRAUTH_REQUIRED_GROUP` | ⛔ | Name of a single Abstrauth group required to view monitoring data |
 | `ABSTRAUTH_REQUIRED_GROUPS` | ⛔ | Comma-separated list of acceptable groups; user must belong to at least one |
 | `FLASK_ENV` | ⛔ (`production`) | Flask environment: `production` or `development` (affects cookie security) |
+| `ABNEMO_STATE_SECRET` | ⛔ | Secret used to encrypt OAuth state, generated with `python3 -c "import secrets; print(secrets.token_urlsafe(32))"` |
+| `ABSTRAUTH_STATE_MAX_AGE` | ⛔ | How long the state should be valid for (time that the user has to sign in), in seconds, default 10 minutes |
 
 > ⚠️ The redirect URI **must exactly match** what is registered on the Abstrauth client, including scheme/host/port/path.
 

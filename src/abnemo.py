@@ -9,6 +9,7 @@ import sys
 import os
 import json
 import logging
+import debugpy
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -199,6 +200,7 @@ def web_command(args):
 
 
 def main():
+    # Parse args early to check for debug flag
     parser = argparse.ArgumentParser(
         description="Abnemo - Network Traffic Monitor and IPTables Rule Generator",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -223,6 +225,10 @@ Examples:
   sudo python3 src/abnemo.py iptables-tree --chain DOCKER --max-rules 10
         """
     )
+    
+    # Global debug argument
+    parser.add_argument('--debug-process', type=int, metavar='PORT',
+                       help='Enable remote debugging on specified port (e.g., 5678)')
     
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
     
@@ -275,6 +281,11 @@ Examples:
                             help='Set logging level (default: INFO)')
     
     args = parser.parse_args()
+    
+    # Enable debugger if requested
+    if args.debug_process:
+        debugpy.listen(args.debug_process)
+        print(f"Debugger is listening on port {args.debug_process}...")
     
     if not args.command:
         parser.print_help()

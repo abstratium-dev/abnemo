@@ -8,6 +8,7 @@ import os
 import json
 import base64
 import hashlib
+import hmac
 import secrets
 import logging
 import threading
@@ -42,8 +43,156 @@ def _generate_code_verifier():
 
 
 def _generate_state():
-    """Generate a random state parameter"""
+    """Generate a random state parameter (legacy - use _generate_signed_state for security)"""
     return _base64url_encode(os.urandom(16))
+
+
+def _generate_signed_state(session_id, server_secret, max_age_seconds=600):
+    """Generate a cryptographically signed state parameter bound to session.
+    
+    This implements industry-standard OAuth 2.0 state parameter security:
+    - HMAC-SHA256 signature binds state to server secret
+    - Timestamp prevents replay attacks (default 10 minute expiry)
+    - Session ID binding prevents session fixation
+    - Nonce provides additional randomness
+    
+    Format: base64url(payload).base64url(signature)
+    Payload: {"session_id": "...", "timestamp": 123456, "nonce": "..."}
+    
+    Args:
+        session_id: Current session identifier
+        server_secret: Secret key for HMAC (should be from environment)
+        max_age_seconds: Maximum age of state before expiry (default 600 = 10 minutes)
+    
+    Returns:
+        Signed state string in format: payload.signature
+    """
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    nonce = _base64url_encode(os.urandom(16))
+    
+    # Create payload with session binding and timestamp
+    payload = {
+        'session_id': session_id,
+        'timestamp': timestamp,
+        'nonce': nonce,
+        'max_age': max_age_seconds
+    }
+    
+    # Encode payload
+    payload_json = json.dumps(payload, separators=(',', ':'))
+    encoded_payload = _base64url_encode(payload_json.encode('utf-8'))
+    
+    # Create HMAC signature
+    signature = hmac.new(
+        server_secret.encode('utf-8'),
+        encoded_payload.encode('utf-8'),
+        hashlib.sha256
+    ).digest()
+    encoded_signature = _base64url_encode(signature)
+    
+    return f"{encoded_payload}.{encoded_signature}"
+
+
+def _validate_signed_state(state, session_id, server_secret):
+    """Validate a cryptographically signed state parameter.
+    
+    This validates:
+    1. State format is correct (payload.signature)
+    2. HMAC signature is valid (prevents tampering)
+    3. State is not expired (timestamp check)
+    4. State is bound to current session (prevents session fixation)
+    
+    Args:
+        state: Signed state string to validate
+        session_id: Current session identifier
+        server_secret: Secret key for HMAC validation
+    
+    Returns:
+        Dict with 'valid' boolean and 'error'/'message' on failure
+    """
+    if not state or not session_id or not server_secret:
+        return {
+            'valid': False,
+            'error': 'missing_parameters',
+            'message': 'State, session ID, or server secret is missing'
+        }
+    
+    try:
+        # Split payload and signature
+        parts = state.split('.')
+        if len(parts) != 2:
+            return {
+                'valid': False,
+                'error': 'invalid_format',
+                'message': 'State parameter has invalid format'
+            }
+        
+        encoded_payload, encoded_signature = parts
+        
+        # Verify HMAC signature using timing-safe comparison
+        expected_signature = hmac.new(
+            server_secret.encode('utf-8'),
+            encoded_payload.encode('utf-8'),
+            hashlib.sha256
+        ).digest()
+        expected_encoded = _base64url_encode(expected_signature)
+        
+        # Use timing-safe comparison to prevent timing attacks
+        if not hmac.compare_digest(encoded_signature, expected_encoded):
+            return {
+                'valid': False,
+                'error': 'invalid_signature',
+                'message': 'State parameter signature is invalid'
+            }
+        
+        # Decode payload
+        # Add padding if needed for base64 decoding
+        padding = 4 - len(encoded_payload) % 4
+        if padding != 4:
+            encoded_payload += '=' * padding
+        
+        payload_json = base64.urlsafe_b64decode(encoded_payload).decode('utf-8')
+        payload = json.loads(payload_json)
+        
+        # Validate session binding
+        if payload.get('session_id') != session_id:
+            return {
+                'valid': False,
+                'error': 'session_mismatch',
+                'message': 'State parameter is not bound to current session'
+            }
+        
+        # Validate timestamp (check expiration)
+        timestamp = payload.get('timestamp', 0)
+        max_age = payload.get('max_age', 600)
+        current_timestamp = int(datetime.now(timezone.utc).timestamp())
+        
+        if current_timestamp - timestamp > max_age:
+            return {
+                'valid': False,
+                'error': 'state_expired',
+                'message': f'State parameter has expired (max age: {max_age}s)'
+            }
+        
+        # State is valid
+        return {
+            'valid': True,
+            'payload': payload
+        }
+        
+    except (ValueError, json.JSONDecodeError, KeyError) as e:
+        return {
+            'valid': False,
+            'error': 'validation_error',
+            'message': f'State validation failed: {str(e)}'
+        }
+    except Exception as e:
+        logger.error('Unexpected error validating state: %s', e)
+        return {
+            'valid': False,
+            'error': 'internal_error',
+            'message': 'Internal error validating state'
+        }
 
 
 def _build_code_challenge(code_verifier):
@@ -315,6 +464,14 @@ def build_oauth_config():
     else:
         session_cookie_name = base_cookie_name
     
+    # Get or generate server secret for state signing
+    # This should be a persistent secret in production (from environment)
+    server_secret = os.getenv('ABNEMO_STATE_SECRET')
+    if not server_secret:
+        # Generate ephemeral secret (will change on restart - acceptable for state)
+        server_secret = secrets.token_urlsafe(32)
+        logger.warning('No ABNEMO_STATE_SECRET set, using ephemeral secret for state signing')
+    
     config = {
         'client_id': os.getenv('ABSTRAUTH_CLIENT_ID'),
         'client_secret': os.getenv('ABSTRAUTH_CLIENT_SECRET'),
@@ -327,6 +484,8 @@ def build_oauth_config():
         'cookie_secure': cookie_secure,
         'cookie_samesite': 'Lax',  # Lax required for OAuth callback redirects; still provides CSRF protection
         'session_ttl': int(os.getenv('ABSTRAUTH_SESSION_TTL', '3600')),
+        'state_secret': server_secret,
+        'state_max_age': int(os.getenv('ABSTRAUTH_STATE_MAX_AGE', '600')),  # 10 minutes default
     }
     
     # Parse required groups
@@ -699,9 +858,21 @@ def register_oauth_routes(app, oauth_config, session_store):
             return jsonify({'error': 'OAuth not configured'}), 404
 
         session = getattr(g, 'session_data', {})
+        session_id = getattr(g, 'session_id', None)
+        
+        if not session_id:
+            logger.error('No session ID available for OAuth login')
+            return jsonify({'error': 'Session initialization failed'}), 500
+        
         code_verifier = _generate_code_verifier()
         code_challenge = _build_code_challenge(code_verifier)
-        state = _generate_state()
+        
+        # Generate cryptographically signed state bound to session
+        state = _generate_signed_state(
+            session_id,
+            oauth_config['state_secret'],
+            oauth_config['state_max_age']
+        )
 
         session['pkce'] = {
             'code_verifier': code_verifier,
@@ -730,11 +901,32 @@ def register_oauth_routes(app, oauth_config, session_store):
             return jsonify({'error': 'OAuth not configured'}), 404
 
         session = getattr(g, 'session_data', {})
+        session_id = getattr(g, 'session_id', None)
         pkce = session.get('pkce', {})
         expected_state = pkce.get('state')
         received_state = request.args.get('state')
-        if not expected_state or expected_state != received_state:
-            return redirect('/?error=invalid_state')
+        
+        # Validate state parameter exists
+        if not expected_state or not received_state:
+            logger.warning('OAuth callback missing state parameter')
+            return redirect('/?error=missing_state')
+        
+        # Validate state with cryptographic signature and session binding
+        validation = _validate_signed_state(
+            received_state,
+            session_id,
+            oauth_config['state_secret']
+        )
+        
+        if not validation['valid']:
+            logger.warning('OAuth state validation failed: %s - %s', 
+                         validation.get('error'), validation.get('message'))
+            return redirect(f"/?error=invalid_state&reason={validation.get('error')}")
+        
+        # Additional check: compare with stored state (defense in depth)
+        if expected_state != received_state:
+            logger.warning('OAuth state mismatch despite valid signature')
+            return redirect('/?error=state_mismatch')
 
         code = request.args.get('code')
         if not code:
