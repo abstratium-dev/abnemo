@@ -433,13 +433,19 @@ def create_app(log_dir):
     def add_security_headers(response):
         """Add security headers to all responses for defense-in-depth protection.
         
-        Implements OWASP recommendations:
+        Implements OWASP recommendations (2026):
         - Content-Security-Policy: Prevents XSS attacks
-        - X-Frame-Options: Prevents clickjacking
+        - X-Frame-Options: Prevents clickjacking (legacy support)
         - X-Content-Type-Options: Prevents MIME sniffing
         - Strict-Transport-Security: Enforces HTTPS
         - Referrer-Policy: Controls referrer information
         - Permissions-Policy: Restricts browser features
+        - Cross-Origin-*-Policy: Protects against Spectre-like attacks
+        - X-XSS-Protection: Disabled per OWASP recommendation
+        
+        References:
+        - https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html
+        - https://owasp.org/www-project-secure-headers/
         """
         # Content Security Policy - prevents XSS and injection attacks
         # Use nonce for inline scripts, event delegation for handlers
@@ -456,11 +462,16 @@ def create_app(log_dir):
             "form-action 'self'"
         )
         
-        # Prevent clickjacking attacks
+        # Prevent clickjacking attacks (X-Frame-Options for legacy browser support)
+        # Note: frame-ancestors in CSP is the modern approach
         response.headers['X-Frame-Options'] = 'DENY'
         
         # Prevent MIME type sniffing
         response.headers['X-Content-Type-Options'] = 'nosniff'
+        
+        # Disable X-XSS-Protection (OWASP recommendation: can create vulnerabilities)
+        # Modern browsers should rely on CSP instead
+        response.headers['X-XSS-Protection'] = '0'
         
         # Enforce HTTPS (only if cookie_secure is enabled)
         if oauth_config.get('cookie_secure', False):
@@ -471,10 +482,27 @@ def create_app(log_dir):
         # Control referrer information leakage
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         
-        # Restrict browser features
+        # Restrict browser features and opt-out of FLoC
         response.headers['Permissions-Policy'] = (
-            'geolocation=(), microphone=(), camera=(), payment=()'
+            'geolocation=(), microphone=(), camera=(), payment=(), '
+            'interest-cohort=()'  # Opt-out of Google FLoC tracking
         )
+        
+        # Cross-Origin policies for Spectre-like attack protection
+        # COOP: Isolate browsing context to same-origin documents
+        response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
+        
+        # CORP: Limit resource loading to same-site only
+        response.headers['Cross-Origin-Resource-Policy'] = 'same-site'
+        
+        # COEP: Prevent loading cross-origin resources without explicit permission
+        # Note: This is strict and may block resources. Monitor for issues.
+        response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
+        
+        # Remove server identification headers (security through obscurity)
+        # Prevents easy fingerprinting of server technology
+        response.headers.pop('Server', None)
+        response.headers.pop('X-Powered-By', None)
         
         return response
 
