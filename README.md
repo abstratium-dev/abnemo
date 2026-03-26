@@ -677,6 +677,34 @@ sudo python3 verification.py
 
 For detailed verification instructions, see [docs/ephemeral/VERIFICATION_GUIDE.md](docs/ephemeral/VERIFICATION_GUIDE.md).
 
+## Running Tests
+
+Install test dependencies:
+
+```bash
+sudo apt install \
+   python3-pytest \
+   python3-pytest-cov \
+   python3-pytest-mock \
+   python3-flake8 \
+   python3-mypy \
+   python3-freezegun \
+   python3-responses
+```
+
+Run the test suite with pytest:
+
+```bash
+# Run all tests with verbose output and coverage report
+python3 -m pytest -v --cov=. --cov-report=term-missing
+
+# Generate HTML coverage report
+python3 -m pytest --cov=. --cov-report=html
+# View report: xdg-open htmlcov/index.html
+```
+
+For detailed testing instructions, see [docs/ephemeral/DEVELOPMENT_AND_TESTING.md](docs/ephemeral/DEVELOPMENT_AND_TESTING.md).
+
 ## Further Documentation
 
 - [Dark Mode Implementation](docs/DARK_MODE_IMPLEMENTATION.md)
