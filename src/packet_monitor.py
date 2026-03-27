@@ -102,16 +102,16 @@ class PacketMonitor:
             if ':' in ip:
                 ip_lower = ip.lower()
                 if ip_lower.startswith('::1'):
-                    return "loopback (IPv6)"
+                    return "loopback"
                 if ip_lower.startswith('fe80:'):
-                    return "link-local (IPv6)"
+                    return "link-local"
                 if ip_lower.startswith('fc00:') or ip_lower.startswith('fd00:'):
-                    return "unique local (IPv6)"
+                    return "unique local"
                 if ip_lower.startswith('ff'):
-                    return "multicast (IPv6)"
+                    return "multicast"
                 if ip_lower.startswith('2001:db8:'):
-                    return "documentation (IPv6)"
-                return "public (IPv6)"
+                    return "documentation"
+                return "public"
             
             # IPv4 classification
             parts = [int(p) for p in ip.split('.')]
@@ -127,11 +127,11 @@ class PacketMonitor:
             
             # Private/Local addresses
             if first == 10:
-                return "private (Class A)"
+                return "private"
             if first == 172 and 16 <= second <= 31:
-                return "private (Class B)"
+                return "private"
             if first == 192 and second == 168:
-                return "private (Class C)"
+                return "private"
             
             # Loopback (127.0.0.0/8)
             if first == 127:
@@ -141,27 +141,26 @@ class PacketMonitor:
             if first == 169 and second == 254:
                 return "link-local"
             
+            # Reserved/Special ranges
             # Broadcast
             if ip == "255.255.255.255":
-                return "broadcast"
-            
-            # Reserved/Special ranges
+                return "reserved"
             if first == 0:
-                return "reserved (current network)"
+                return "reserved"
             if first == 192 and second == 0 and parts[2] == 0:
-                return "reserved (IETF protocol)"
+                return "reserved"
             if first == 192 and second == 0 and parts[2] == 2:
-                return "reserved (TEST-NET-1)"
+                return "reserved"
             if first == 198 and second == 51 and parts[2] == 100:
-                return "reserved (TEST-NET-2)"
+                return "reserved"
             if first == 203 and second == 0 and parts[2] == 113:
-                return "reserved (TEST-NET-3)"
+                return "reserved"
             if first == 192 and second == 88 and parts[2] == 99:
-                return "reserved (IPv6 to IPv4 relay)"
+                return "reserved"
             if first == 198 and 18 <= second <= 19:
-                return "reserved (benchmark testing)"
+                return "reserved"
             if 240 <= first <= 255:
-                return "reserved (future use)"
+                return "reserved"
             
             # Public/Internet routable
             return "public"
@@ -186,9 +185,9 @@ class PacketMonitor:
             self.dns_cache[ip_address] = domain
             return domain
         except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout, Exception):
-            # If reverse DNS fails, cache as unknown
-            self.dns_cache[ip_address] = "unknown"
-            return "unknown"
+            # If reverse DNS fails, cache as None
+            self.dns_cache[ip_address] = None
+            return None
     
     def packet_callback(self, packet):
         """Callback function to process each captured packet"""
@@ -308,7 +307,7 @@ class PacketMonitor:
             # Perform reverse DNS lookup if not already done
             if not self.traffic_stats[remote_ip]["domains"]:
                 domain = self.reverse_dns_lookup(remote_ip)
-                if domain != "unknown":
+                if domain:
                     self.traffic_stats[remote_ip]["domains"].add(domain)
             
             # Note: ISP lookup is deferred to avoid blocking packet capture
@@ -817,3 +816,12 @@ class PacketMonitor:
             print(f"   Traffic: {data['bytes']:,} bytes, {data['packets']} packets")
         
         print("\n" + "="*100 + "\n")
+    
+    def save_traffic_log(self):
+        """Save traffic log - alias for save_statistics for compatibility"""
+        return self.save_statistics()
+    
+    def stop_monitoring(self):
+        """Stop packet monitoring"""
+        self.running = False
+        self.stop_event.set()

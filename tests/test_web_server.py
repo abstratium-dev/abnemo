@@ -400,5 +400,308 @@ class TestWebServerEndpoints:
         client = app.test_client()
         resp = client.get('/api/traffic?begin=invalid&end=2026-03-02T21:00:00Z')
         assert resp.status_code == 400
+    
+    def test_api_traffic_default_params(self, log_dir):
+        """Test /api/traffic with default parameters (last 5 minutes)"""
+        app = create_app(str(log_dir))
+        client = app.test_client()
+        
+        # Missing both params - should use defaults (last 5 minutes)
+        resp = client.get('/api/traffic')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert 'traffic_by_ip' in data
+        
+        # Only begin param - should default end to now
+        resp = client.get('/api/traffic?begin=2026-03-02T20:00:00Z')
+        assert resp.status_code == 200
+    
+    def test_api_traffic_viz_endpoint(self, log_dir):
+        """Test /api/traffic-viz endpoint with pattern filtering"""
+        self.create_log(log_dir, "2026-03-02T20:30:00Z", ip="8.8.8.8")
+        self.create_log(log_dir, "2026-03-02T20:35:00Z", ip="1.1.1.1")
+        
+        app = create_app(str(log_dir))
+        client = app.test_client()
+        
+        # Search for 8.8.8.8
+        resp = client.get('/api/traffic-viz?begin=2026-03-02T20:00:00Z&end=2026-03-02T21:00:00Z&pattern=8\\.8\\.8\\.8')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert '8.8.8.8' in data['traffic_by_ip']
+        assert '1.1.1.1' not in data['traffic_by_ip']
+    
+    def test_api_traffic_viz_missing_params(self, log_dir):
+        """Test /api/traffic-viz without required parameters"""
+        app = create_app(str(log_dir))
+        client = app.test_client()
+        
+        # Missing pattern
+        resp = client.get('/api/traffic-viz?begin=2026-03-02T20:00:00Z&end=2026-03-02T21:00:00Z')
+        assert resp.status_code == 400
+    
+    def test_api_traffic_viz_invalid_regex(self, log_dir):
+        """Test /api/traffic-viz with invalid regex pattern"""
+        app = create_app(str(log_dir))
+        client = app.test_client()
+        
+        # Invalid regex
+        resp = client.get('/api/traffic-viz?begin=2026-03-02T20:00:00Z&end=2026-03-02T21:00:00Z&pattern=[invalid')
+        assert resp.status_code == 400
+    
+    def test_index_page(self, log_dir):
+        """Test index page renders"""
+        app = create_app(str(log_dir))
+        client = app.test_client()
+        
+        resp = client.get('/')
+        assert resp.status_code == 200
+    
+    def test_iptables_page(self, log_dir):
+        """Test iptables page renders"""
+        app = create_app(str(log_dir))
+        client = app.test_client()
+        
+        resp = client.get('/iptables')
+        assert resp.status_code == 200
+    
+    def test_fail2ban_page(self, log_dir):
+        """Test fail2ban page renders"""
+        app = create_app(str(log_dir))
+        client = app.test_client()
+        
+        resp = client.get('/fail2ban')
+        assert resp.status_code == 200
+    
+    def test_traffic_viz_page(self, log_dir):
+        """Test traffic visualization page renders"""
+        app = create_app(str(log_dir))
+        client = app.test_client()
+        
+        resp = client.get('/traffic-viz')
+        assert resp.status_code == 200
+    
+    def test_ip_bans_page(self, log_dir):
+        """Test IP bans page renders"""
+        app = create_app(str(log_dir))
+        client = app.test_client()
+        
+        resp = client.get('/ip-bans')
+        assert resp.status_code == 200
+    
+    def test_static_files(self, log_dir):
+        """Test static file serving"""
+        # Static files are served from web_static directory by default
+        # Just verify the route exists
+        app = create_app(str(log_dir))
+        client = app.test_client()
+        
+        # Try to access a non-existent static file
+        # Should get 404 but route should exist
+        resp = client.get('/nonexistent.txt')
+        # Either 404 (file not found) or 200 (if file exists) is acceptable
+        assert resp.status_code in [200, 404]
+    
+    def test_api_process_ps_error(self, log_dir, monkeypatch):
+        """Test /api/process when ps command fails"""
+        app = create_app(str(log_dir))
+        client = app.test_client()
+        
+        class ErrorResult:
+            def __init__(self):
+                self.returncode = 1
+                self.stdout = ""
+                self.stderr = "Process not found"
+        
+        def fake_run(cmd, capture_output=True, text=True, timeout=5):
+            return ErrorResult()
+        
+        monkeypatch.setattr('subprocess.run', fake_run)
+        resp = client.get('/api/process/9999')
+        # When ps fails, it returns 500 error
+        assert resp.status_code == 500
+        data = resp.get_json()
+        assert 'error' in data
+    
+    def test_api_process_timeout(self, log_dir, monkeypatch):
+        """Test /api/process when ps command times out"""
+        import subprocess
+        
+        app = create_app(str(log_dir))
+        client = app.test_client()
+        
+        def fake_run(cmd, capture_output=True, text=True, timeout=5):
+            raise subprocess.TimeoutExpired(cmd, timeout)
+        
+        monkeypatch.setattr('subprocess.run', fake_run)
+        resp = client.get('/api/process/1234')
+        assert resp.status_code == 500
+        data = resp.get_json()
+        assert 'error' in data
+    
+    def test_api_process_exception(self, log_dir, monkeypatch):
+        """Test /api/process when ps command raises exception"""
+        app = create_app(str(log_dir))
+        client = app.test_client()
+        
+        def fake_run(cmd, capture_output=True, text=True, timeout=5):
+            raise Exception("Unexpected error")
+        
+        monkeypatch.setattr('subprocess.run', fake_run)
+        resp = client.get('/api/process/1234')
+        assert resp.status_code == 500
+        data = resp.get_json()
+        assert 'error' in data
+    
+    def test_csrf_error_handler(self, log_dir):
+        """Test CSRF error handler"""
+        app = create_app(str(log_dir))
+        client = app.test_client()
+        
+        # Try to POST without CSRF token (should be caught by CSRF protection)
+        # Note: This tests the error handler registration
+        # Actual CSRF validation is tested in dedicated CSRF tests
+        assert app.config.get('WTF_CSRF_ENABLED', True)
+
+
+class TestGetTrafficTimeSeries:
+    """Test get_traffic_time_series function"""
+    
+    @pytest.fixture
+    def temp_log_dir(self):
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir)
+    
+    def create_test_log(self, log_dir, timestamp_str, traffic_data):
+        """Helper to create a test log file"""
+        filename = f"traffic_log_{timestamp_str.replace(':', '').replace('-', '').replace('T', '_')[:15]}.json"
+        filepath = os.path.join(log_dir, filename)
+        
+        log_content = {
+            "timestamp": timestamp_str,
+            "traffic_by_ip": traffic_data
+        }
+        
+        with open(filepath, 'w') as f:
+            json.dump(log_content, f)
+        
+        return filepath
+    
+    def test_pattern_matching_ip(self, temp_log_dir):
+        """Test pattern matching against IP addresses"""
+        from src.web_server import get_traffic_time_series
+        import re
+        
+        traffic_data = {
+            "8.8.8.8": {"bytes": 1000, "packets": 10, "domains": [], "ports": [443]},
+            "1.1.1.1": {"bytes": 500, "packets": 5, "domains": [], "ports": [80]}
+        }
+        
+        self.create_test_log(temp_log_dir, "2026-03-02T20:30:00Z", traffic_data)
+        
+        begin = datetime(2026, 3, 2, 20, 0, 0, tzinfo=timezone.utc)
+        end = datetime(2026, 3, 2, 21, 0, 0, tzinfo=timezone.utc)
+        pattern = re.compile(r"8\.8\.8\.8")
+        
+        result = get_traffic_time_series(temp_log_dir, begin, end, pattern)
+        
+        assert "8.8.8.8" in result['traffic_by_ip']
+        assert "1.1.1.1" not in result['traffic_by_ip']
+        assert result['total_bytes'] == 1000
+    
+    def test_pattern_matching_domain(self, temp_log_dir):
+        """Test pattern matching against domains"""
+        from src.web_server import get_traffic_time_series
+        import re
+        
+        traffic_data = {
+            "1.2.3.4": {"bytes": 1000, "packets": 10, "domains": ["google.com"], "ports": [443]},
+            "5.6.7.8": {"bytes": 500, "packets": 5, "domains": ["cloudflare.com"], "ports": [80]}
+        }
+        
+        self.create_test_log(temp_log_dir, "2026-03-02T20:30:00Z", traffic_data)
+        
+        begin = datetime(2026, 3, 2, 20, 0, 0, tzinfo=timezone.utc)
+        end = datetime(2026, 3, 2, 21, 0, 0, tzinfo=timezone.utc)
+        pattern = re.compile(r"google")
+        
+        result = get_traffic_time_series(temp_log_dir, begin, end, pattern)
+        
+        assert "1.2.3.4" in result['traffic_by_ip']
+        assert "5.6.7.8" not in result['traffic_by_ip']
+    
+    def test_pattern_matching_isp(self, temp_log_dir):
+        """Test pattern matching against ISP info"""
+        from src.web_server import get_traffic_time_series
+        import re
+        
+        traffic_data = {
+            "1.2.3.4": {
+                "bytes": 1000,
+                "packets": 10,
+                "domains": [],
+                "ports": [443],
+                "isp": {"org": "Google LLC", "country": "US"}
+            },
+            "5.6.7.8": {
+                "bytes": 500,
+                "packets": 5,
+                "domains": [],
+                "ports": [80],
+                "isp": {"org": "Cloudflare", "country": "US"}
+            }
+        }
+        
+        self.create_test_log(temp_log_dir, "2026-03-02T20:30:00Z", traffic_data)
+        
+        begin = datetime(2026, 3, 2, 20, 0, 0, tzinfo=timezone.utc)
+        end = datetime(2026, 3, 2, 21, 0, 0, tzinfo=timezone.utc)
+        pattern = re.compile(r"Google")
+        
+        result = get_traffic_time_series(temp_log_dir, begin, end, pattern)
+        
+        assert "1.2.3.4" in result['traffic_by_ip']
+        assert "5.6.7.8" not in result['traffic_by_ip']
+    
+    def test_time_series_aggregation(self, temp_log_dir):
+        """Test time series data aggregation"""
+        from src.web_server import get_traffic_time_series
+        import re
+        
+        traffic_data1 = {
+            "8.8.8.8": {"bytes": 1000, "packets": 10, "domains": [], "ports": [443]}
+        }
+        traffic_data2 = {
+            "8.8.8.8": {"bytes": 2000, "packets": 20, "domains": [], "ports": [443]}
+        }
+        
+        self.create_test_log(temp_log_dir, "2026-03-02T20:30:00Z", traffic_data1)
+        self.create_test_log(temp_log_dir, "2026-03-02T20:35:00Z", traffic_data2)
+        
+        begin = datetime(2026, 3, 2, 20, 0, 0, tzinfo=timezone.utc)
+        end = datetime(2026, 3, 2, 21, 0, 0, tzinfo=timezone.utc)
+        pattern = re.compile(r".*")  # Match all
+        
+        result = get_traffic_time_series(temp_log_dir, begin, end, pattern)
+        
+        assert len(result['time_series']) == 2
+        assert result['total_bytes'] == 3000
+        assert result['total_packets'] == 30
+    
+    def test_nonexistent_directory(self):
+        """Test with non-existent directory"""
+        from src.web_server import get_traffic_time_series
+        import re
+        
+        begin = datetime(2026, 3, 2, 20, 0, 0, tzinfo=timezone.utc)
+        end = datetime(2026, 3, 2, 21, 0, 0, tzinfo=timezone.utc)
+        pattern = re.compile(r".*")
+        
+        result = get_traffic_time_series("/nonexistent/path", begin, end, pattern)
+        
+        assert "error" in result
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

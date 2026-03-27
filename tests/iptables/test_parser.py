@@ -139,6 +139,14 @@ class TestIptablesParser:
         assert parser._parse_count('91M') == 91000000
         assert parser._parse_count('1G') == 1000000000
     
+    def test_parse_empty_output(self, parser):
+        """Test parsing empty output"""
+        config = parser.parse_output('', table_name='filter')
+        assert config is not None
+        assert len(config.tables) == 1
+        filter_table = config.get_table('filter')
+        assert len(filter_table.chains) == 0
+    
     def test_chain_references(self, parser, iptables_output):
         """Test that rules with chain targets are parsed correctly"""
         config = parser.parse_output(iptables_output, table_name='filter')
@@ -174,6 +182,41 @@ class TestLoadIptablesConfig:
         filter_table = config.get_table('filter')
         assert filter_table is not None
         assert len(filter_table.chains) > 0
+    
+    def test_load_iptables_command_timeout(self):
+        """Test handling of iptables command timeout"""
+        from unittest.mock import patch
+        import subprocess
+        
+        parser = IptablesParser()
+        
+        with patch('subprocess.run', side_effect=subprocess.TimeoutExpired('iptables', 10)):
+            with pytest.raises(RuntimeError, match="timed out"):
+                parser.parse_from_command('filter', use_sudo=False)
+    
+    def test_load_iptables_command_not_found(self):
+        """Test handling when iptables command is not found"""
+        from unittest.mock import patch
+        
+        parser = IptablesParser()
+        
+        with patch('subprocess.run', side_effect=FileNotFoundError()):
+            with pytest.raises(RuntimeError, match="not found"):
+                parser.parse_from_command('filter', use_sudo=False)
+    
+    def test_load_iptables_command_failure(self):
+        """Test handling of iptables command failure"""
+        from unittest.mock import patch, Mock
+        
+        parser = IptablesParser()
+        
+        mock_result = Mock()
+        mock_result.returncode = 1
+        mock_result.stderr = "Permission denied"
+        
+        with patch('subprocess.run', return_value=mock_result):
+            with pytest.raises(RuntimeError, match="command failed"):
+                parser.parse_from_command('filter', use_sudo=False)
 
 
 class TestDockerEnrichmentIntegration:

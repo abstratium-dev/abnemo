@@ -259,10 +259,11 @@ class TestSessionFixationIntegration:
         ).rstrip(b'=').decode('ascii')
         return f'{header_b64}.{payload_b64}.fake_signature'
     
+    @patch('oauth.extract_user')
     @patch('oauth.exchange_code_for_token')
-    def test_oauth_callback_regenerates_session(self, mock_exchange):
+    def test_oauth_callback_regenerates_session(self, mock_exchange, mock_extract_user):
         """Test that OAuth callback regenerates session ID after authentication"""
-        from flask import Flask, g
+        from flask import Flask, g, request
         from oauth import register_oauth_routes, build_oauth_config
         
         app = Flask(__name__)
@@ -282,11 +283,45 @@ class TestSessionFixationIntegration:
             'cookie_secure': False,
             'cookie_samesite': 'Lax',
             'session_ttl': 3600,
-            'required_groups': []
+            'required_groups': [],
+            'state_secret': 'test_state_secret',
+            'state_max_age': 600,
+            'wellknown_uri': 'https://auth.example.com/.well-known/openid-configuration'
         }
         
         store = MemorySessionStore(ttl_seconds=3600)
-        register_oauth_routes(app, oauth_config, store)
+        
+        # Add session middleware to set g.session_id and g.session_data
+        @app.before_request
+        def _load_session():
+            session_id = request.cookies.get(oauth_config['session_cookie_name'])
+            session_data = store.get(session_id)
+            if not session_data:
+                session_id, session_data = store.create_session()
+                g.session_is_new = True
+            g.session_id = session_id
+            g.session_data = session_data
+        
+        @app.after_request
+        def _persist_session(response):
+            session_id = getattr(g, 'session_id', None)
+            if session_id:
+                response.set_cookie(
+                    oauth_config['session_cookie_name'],
+                    session_id,
+                    httponly=True,
+                    secure=oauth_config['cookie_secure'],
+                    samesite=oauth_config['cookie_samesite'],
+                    max_age=oauth_config['session_ttl'],
+                    path='/'
+                )
+            return response
+        
+        # Create a mock limiter
+        mock_limiter = Mock()
+        mock_limiter.limit = lambda *args, **kwargs: lambda f: f  # No-op decorator
+        
+        register_oauth_routes(app, oauth_config, store, mock_limiter)
         
         # Mock token exchange response
         payload = {
@@ -301,6 +336,14 @@ class TestSessionFixationIntegration:
             'access_token': 'test_access_token',
             'id_token': id_token,
             'expires_in': 3600
+        }
+        
+        # Mock extract_user to return user data
+        mock_extract_user.return_value = {
+            'sub': 'user123',
+            'email': 'test@example.com',
+            'name': 'Test User',
+            'groups': []
         }
         
         with app.test_client() as client:
@@ -331,15 +374,13 @@ class TestSessionFixationIntegration:
             assert old_session.get('authenticated') is False
             
             # 2. Simulate OAuth callback with authorization code
-            # First, we need to set up the PKCE state in the session
-            old_session['pkce'] = {
-                'code_verifier': 'test_verifier',
-                'state': 'test_state',
-                'created_at': datetime.now(timezone.utc).isoformat()
-            }
+            # Get the state that was generated during login
+            pkce_data = old_session.get('pkce', {})
+            assert 'state' in pkce_data, "PKCE state should be set after login"
+            state_param = pkce_data['state']
             
-            # Make callback request
-            response = client.get('/oauth/callback?code=test_code&state=test_state')
+            # Make callback request with the actual state from the session
+            response = client.get(f'/oauth/callback?code=test_code&state={state_param}')
             assert response.status_code == 302  # Redirect to home
             
             # Get the new session cookie from response

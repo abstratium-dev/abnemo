@@ -703,6 +703,8 @@ python3 -m pytest --cov=. --cov-report=html
 # View report: xdg-open htmlcov/index.html
 ```
 
+**Note:** `verification.py` is excluded from code coverage as it's a standalone verification tool, not part of the main application. The exclusion is configured in `.coveragerc`.
+
 For detailed testing instructions, see [docs/ephemeral/DEVELOPMENT_AND_TESTING.md](docs/ephemeral/DEVELOPMENT_AND_TESTING.md).
 
 ## Further Documentation

@@ -1,14 +1,13 @@
 [run]
 # Coverage configuration for abnemo
-source = .
+source = ./src
 omit =
     */tests/*
     */test_*.py
     */__pycache__/*
     */venv/*
     */env/*
-    setup.py
-    build_ebpf.sh
+    verification.py
 
 [report]
 # Reporting options

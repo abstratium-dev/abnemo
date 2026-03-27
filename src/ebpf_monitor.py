@@ -42,7 +42,9 @@ class EBPFMonitor(PacketMonitor):
         self.extra_verbose_for_testing = extra_verbose_for_testing
         self.packet_log_file = None
         if self.extra_verbose_for_testing:
-            self.packet_log_file = open("/tmp/verification_abnemo_packets.log", "w")
+            import os
+            log_file_path = os.path.join(self.log_dir, "verification_abnemo_packets.log")
+            self.packet_log_file = open(log_file_path, "w")
             self.packet_log_file.write("ABNEMO PACKET LOG\n")
             self.packet_log_file.write("=" * 80 + "\n\n")
             self.packet_count = 0
@@ -260,7 +262,7 @@ class EBPFMonitor(PacketMonitor):
             # Perform reverse DNS lookup if not already done
             if not self.traffic_stats[remote_ip]["domains"]:
                 domain = self.reverse_dns_lookup(remote_ip)
-                if domain != "unknown":
+                if domain:
                     self.traffic_stats[remote_ip]["domains"].add(domain)
             
             # Store process info from eBPF (only for outgoing)
@@ -335,10 +337,16 @@ class EBPFMonitor(PacketMonitor):
             return None
     
     def _identify_container_from_pid(self, pid):
-        """Identify Docker container from process PID by reading /proc/<pid>/cgroup"""
+        """Identify Docker container from process PID by reading /proc/<pid>/cgroup
+        Returns container name string or None
+        """
         # Check cache first
         if pid in self.pid_container_cache:
-            return self.pid_container_cache[pid]
+            cached = self.pid_container_cache[pid]
+            # Return just the name string if it's a dict, otherwise return as-is
+            if isinstance(cached, dict) and 'name' in cached:
+                return cached['name']
+            return cached
         
         try:
             cgroup_file = f"/proc/{pid}/cgroup"
@@ -372,13 +380,13 @@ class EBPFMonitor(PacketMonitor):
                                     short_id = container_id[:12]
                                     container_name = self._get_docker_container_name(short_id)
                                     if container_name:
+                                        # Cache the full dict but return just the name
                                         result = {
                                             'name': container_name,
                                             'id': short_id
                                         }
-                                        # Cache the result
                                         self.pid_container_cache[pid] = result
-                                        return result
+                                        return container_name
                         elif '/docker/' in line:
                             # cgroupfs format: /docker/<64-char-hex>
                             parts = line.split('/docker/')
@@ -388,13 +396,13 @@ class EBPFMonitor(PacketMonitor):
                                     short_id = container_id[:12]
                                     container_name = self._get_docker_container_name(short_id)
                                     if container_name:
+                                        # Cache the full dict but return just the name
                                         result = {
                                             'name': container_name,
                                             'id': short_id
                                         }
-                                        # Cache the result
                                         self.pid_container_cache[pid] = result
-                                        return result
+                                        return container_name
             
             # Cache negative result
             self.pid_container_cache[pid] = None

@@ -4,9 +4,7 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
 
 ## Today
 
-- tests
-  - fix tests in the test directory and its subdirectory. no idea which are real tests!
-  - run all and check coverage
+- create e2e tests
 
 - test install.sh script
 

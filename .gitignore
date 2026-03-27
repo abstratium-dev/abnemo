@@ -13,6 +13,8 @@ isp_cache.json
 
 .coverage
 coverage.xml
+test_results.txt
+coverage.json
 
 
 *list_filters*.json
