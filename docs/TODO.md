@@ -4,13 +4,11 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
 
 ## Today
 
-- create e2e tests
-
-- test install.sh script
+- add more e2e tests for other tabs
 
 - add notes on how to release so that i know what i am doing in the future
 
-- create an upgrade.sh script which does a git pull and restarts the service
+- create an upgrade.sh script which does a git pull and restarts the service, without modifying config
 
 - create an uninstall.sh script which removes all files that were installed
 

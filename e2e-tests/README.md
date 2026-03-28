@@ -30,13 +30,19 @@ Controls whether Playwright starts the server automatically:
 When developing tests or debugging, you can run the server manually and then run tests:
 
 ```bash
-# Start Quarkus in dev mode
-source /w/abstratium-abnemo.env
-mvn quarkus:dev
-
-# In another terminal, run tests
+# Start server
 cd e2e-tests
+source /w/abstratium-abnemo.env
+start-e2e-server.sh
+
+# In another terminal, run tests headless:
 npx playwright test
+
+# Or with a specific browser and test file, with no report:
+PLAYWRIGHT_HTML_OPEN=never npx playwright test happy.spec.ts --project=chromium --ui
+
+# Or interactively:
+npx playwright test --project=chromium --ui
 ```
 
 ## Configuration
@@ -55,8 +61,8 @@ Always use functions from the `/pages` directory instead of directly interacting
 
 ```typescript
 // ❌ Bad - direct element interaction
-await page.locator("#username").fill("admin@abstratium.dev");
-await page.locator("#password").fill("password");
+await page.locator("#username").fill("test@abstratium.dev");
+await page.locator("#password").fill("secretLong");
 await page.locator("#signin-button").click();
 
 // ✅ Good - use page object functions
@@ -121,8 +127,8 @@ npx playwright show-report
 
 ### `ERR_CONNECTION_REFUSED`
 The server is not running. Either:
-- Start Quarkus manually with `mvn quarkus:dev`, or
-- Set `BASE_URL=http://localhost:808x` to let Playwright start the server
+- Start server manually with `start-e2e-server.sh`, or
+- Set `BASE_URL=http://localhost:40002` to let Playwright start the server
 
 ### Test timeout waiting for elements
 The Angular application may not have loaded yet. Ensure you're waiting for elements with appropriate timeouts:
@@ -130,8 +136,8 @@ The Angular application may not have loaded yet. Ensure you're waiting for eleme
 await page.locator("#username").waitFor({ state: 'visible', timeout: 10000 });
 ```
 
-### Port 808x already in use
-Another instance of Quarkus is running. Stop it before running e2e tests via Maven.
+### Port 40002 already in use
+Another instance of the server is running. Stop it before running e2e tests.
 
 ## test.only
 

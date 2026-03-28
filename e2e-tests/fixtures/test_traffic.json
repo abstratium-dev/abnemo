@@ -1,0 +1,123 @@
+{
+  "timestamp": "2025-12-31T23:00:00.000000",
+  "total_ips": 5,
+  "total_bytes": 15360,
+  "total_packets": 120,
+  "traffic_by_ip": {
+    "192.168.1.100": {
+      "bytes": 5120,
+      "packets": 40,
+      "domains": [
+        "local-server.internal"
+      ],
+      "ports": [
+        443,
+        80
+      ],
+      "ip_type": "private",
+      "isp": null,
+      "processes": [
+        {
+          "name": "chrome",
+          "pid": 12345,
+          "cgroup_id": 100001
+        }
+      ]
+    },
+    "8.8.8.8": {
+      "bytes": 2048,
+      "packets": 16,
+      "domains": [
+        "dns.google"
+      ],
+      "ports": [
+        53
+      ],
+      "ip_type": "public",
+      "isp": {
+        "isp": "Google LLC",
+        "org": "Google Public DNS",
+        "as": "AS15169 Google LLC",
+        "asname": "GOOGLE",
+        "country": "United States",
+        "country_code": "US"
+      },
+      "processes": [
+        {
+          "name": "systemd-resolve",
+          "pid": 1543,
+          "cgroup_id": 6412
+        }
+      ]
+    },
+    "93.184.216.34": {
+      "bytes": 4096,
+      "packets": 32,
+      "domains": [
+        "example.com"
+      ],
+      "ports": [
+        443
+      ],
+      "ip_type": "public",
+      "isp": {
+        "isp": "Edgecast Inc.",
+        "org": "Verizon Digital Media Services",
+        "as": "AS15133 Edgecast Inc.",
+        "asname": "EDGECAST",
+        "country": "United States",
+        "country_code": "US"
+      },
+      "processes": [
+        {
+          "name": "curl",
+          "pid": 23456,
+          "cgroup_id": 200002
+        }
+      ]
+    },
+    "10.0.0.50": {
+      "bytes": 3072,
+      "packets": 24,
+      "domains": [],
+      "ports": [
+        22
+      ],
+      "ip_type": "private",
+      "isp": null,
+      "processes": [
+        {
+          "name": "sshd",
+          "pid": 34567,
+          "cgroup_id": 300003
+        }
+      ]
+    },
+    "1.1.1.1": {
+      "bytes": 1024,
+      "packets": 8,
+      "domains": [
+        "one.one.one.one"
+      ],
+      "ports": [
+        53
+      ],
+      "ip_type": "public",
+      "isp": {
+        "isp": "Cloudflare, Inc.",
+        "org": "Cloudflare DNS",
+        "as": "AS13335 Cloudflare, Inc.",
+        "asname": "CLOUDFLARENET",
+        "country": "Australia",
+        "country_code": "AU"
+      },
+      "processes": [
+        {
+          "name": "firefox",
+          "pid": 45678,
+          "cgroup_id": 400004
+        }
+      ]
+    }
+  }
+}

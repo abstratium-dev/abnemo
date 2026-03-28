@@ -80,10 +80,10 @@ apt-get install -y \
     python3-dnspython \
     python3-tabulate \
     python3-bpfcc \
-    python3-bcc \
     python3-jwt \
     python3-debugpy \
     python3-flask-limiter \
+    python3-flaskext.wtf \
     clang \
     llvm \
     libelf-dev \
@@ -102,22 +102,18 @@ git clone "$REPO_URL" "$INSTALL_DIR"
 cd "$INSTALL_DIR"
 
 echo ""
-echo -e "${GREEN}Step 3: Installing Python dependencies...${NC}"
-pip3 install -r requirements.txt
-
-echo ""
-echo -e "${GREEN}Step 4: Building eBPF program...${NC}"
+echo -e "${GREEN}Step 3: Building eBPF program...${NC}"
 chmod +x scripts/build_ebpf.sh
 ./scripts/build_ebpf.sh
 
 echo ""
-echo -e "${GREEN}Step 5: Creating directories...${NC}"
+echo -e "${GREEN}Step 4: Creating directories...${NC}"
 mkdir -p "$LOG_DIR"
 mkdir -p "$DATA_DIR"
 mkdir -p "$CONFIG_DIR"
 
 echo ""
-echo -e "${GREEN}Step 6: Configuring environment variables...${NC}"
+echo -e "${GREEN}Step 5: Configuring environment variables...${NC}"
 echo -e "${YELLOW}Please provide the following configuration values:${NC}"
 echo ""
 
@@ -159,7 +155,7 @@ prompt_with_default ABNEMO_SMTP_TO "ABNEMO_SMTP_TO" "" false
 prompt_with_default ABNEMO_SMTP_TLS "ABNEMO_SMTP_TLS" "true" false
 
 echo ""
-echo -e "${GREEN}Step 7: Writing environment file...${NC}"
+echo -e "${GREEN}Step 6: Writing environment file...${NC}"
 cat > "$ENV_FILE" <<EOF
 # Abnemo Environment Configuration
 # Generated on $(date)
@@ -200,7 +196,7 @@ chmod 600 "$ENV_FILE"
 echo -e "${GREEN}Environment file created at: $ENV_FILE${NC}"
 
 echo ""
-echo -e "${GREEN}Step 8: Creating systemd service...${NC}"
+echo -e "${GREEN}Step 7: Creating systemd service...${NC}"
 cat > "$SERVICE_FILE" <<EOF
 [Unit]
 Description=Abnemo Network Traffic Monitor
@@ -256,7 +252,7 @@ EOF
 echo -e "${GREEN}Systemd service file created at: $SERVICE_FILE${NC}"
 
 echo ""
-echo -e "${GREEN}Step 9: Setting permissions...${NC}"
+echo -e "${GREEN}Step 8: Setting permissions...${NC}"
 chmod +x "${INSTALL_DIR}/scripts/abnemo.sh"
 chown -R root:root "$INSTALL_DIR"
 chown -R root:root "$LOG_DIR"
@@ -264,7 +260,7 @@ chown -R root:root "$DATA_DIR"
 chown -R root:root "$CONFIG_DIR"
 
 echo ""
-echo -e "${GREEN}Step 10: Enabling and starting service...${NC}"
+echo -e "${GREEN}Step 9: Enabling and starting service...${NC}"
 systemctl daemon-reload
 systemctl enable abnemo
 systemctl start abnemo

@@ -18,3 +18,8 @@ coverage.json
 
 
 *list_filters*.json
+
+**/.playwright-cli
+**/playwright-report
+**/test-results
+**/node_modules
