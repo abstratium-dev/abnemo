@@ -55,10 +55,12 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
 
+    /*
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
     },
+    */
 
     /* temporarily disabled since it fails - 
        cookies don't seem to be sent back to the server

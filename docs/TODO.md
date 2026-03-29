@@ -8,10 +8,6 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
 
 - add notes on how to release so that i know what i am doing in the future
 
-- create an upgrade.sh script which does a git pull and restarts the service, without modifying config
-
-- create an uninstall.sh script which removes all files that were installed
-
 
 ## Tomorrow
 
@@ -19,6 +15,7 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
 
 ## Later
 
+- backup and restore of config files
 - measure performance
 - alerting if there are sudden spikes in traffic
 - test traffic directions

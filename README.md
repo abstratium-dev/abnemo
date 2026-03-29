@@ -107,6 +107,34 @@ export IPAPI_KEY=your_api_key_here
 # Or add to ~/.bashrc for persistence
 ```
 
+## Update
+
+To update Abnemo, use the update script:
+
+```bash
+sudo ./update.sh
+```
+
+This will:
+- Create a backup of the previous version
+- Pull the latest code from the repository
+- Rebuild the eBPF program
+- Restart the service
+
+## Uninstall
+
+To uninstall Abnemo, use the uninstall script:
+
+```bash
+sudo ./uninstall.sh
+```
+
+This will:
+- Stop the service
+- Remove the systemd service
+- Remove the installation directory
+- Clean up any remaining files
+
 ## Usage
 
 ### 1. Monitor Network Traffic
@@ -625,7 +653,10 @@ abnemo/
 ├── .gitignore                     # Git ignore rules
 ├── README.md                      # This file
 ├── LICENSE                        # License file
-└── SECURITY.md                    # Security policy
+├── SECURITY.md                    # Security policy
+├── install.sh                     # Installation script
+├── update.sh                      # Update script
+└── uninstall.sh                   # Uninstall script
 ```
 
 ## SBOM & Compliance
@@ -711,6 +742,7 @@ For detailed testing instructions, see [docs/ephemeral/DEVELOPMENT_AND_TESTING.m
 
 - [Dark Mode Implementation](docs/DARK_MODE_IMPLEMENTATION.md)
 - [Design](docs/DESIGN.md)
+- [Development and Testing](docs/DEVELOPMENT_AND_TESTING.md)
 - [Systemd Service](docs/SYSTEMD_SERVICE.md)
 - [TODO](docs/TODO.md)
 - [iptables Explained](docs/iptables-explained.md)
