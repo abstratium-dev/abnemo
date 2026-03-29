@@ -51,7 +51,10 @@ git status
 git add .
 
 # Commit with a descriptive message
-git commit -m "chore: prepare for release vX.Y.Z"
+git commit -m "prepare for release vX.Y.Z"
+
+# Pull latest changes
+git pull origin main
 
 # Push to main branch
 git push origin main
