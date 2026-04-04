@@ -8,6 +8,7 @@ This list is NOT to be read or modified by agents, LLMs, AI, etc.
 
 - add notes on how to release so that i know what i am doing in the future
 
+- fix this in prod: ⚠ Failed to ban IP: Traceback (most recent call last): File "/usr/sbin/ufw", line 130, in <module> lock = create_lock(lockfile=lockfile, dryrun=pr.dryrun) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/lib/python3/dist-packages/ufw/util.py", line 1104, in create_lock lock = open(lockfile, 'w') ^^^^^^^^^^^^^^^^^^^ OSError: [Errno 30] Read-only file system: '/run/ufw.lock'
 
 ## Tomorrow
 
